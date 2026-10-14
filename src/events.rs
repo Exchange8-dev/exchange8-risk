@@ -243,6 +243,7 @@ pub async fn journal_mutation(
 /// One egress item staged by the decision plane (the authorize path or the
 /// event consumers) and written by [`spawn_outbox_writer`]. The trail rows
 /// + outbox + audit rows commit in ONE transaction per env group; the
+///
 /// synchronous gate never waits on it.
 #[derive(Clone, Debug)]
 pub enum EgressItem {
