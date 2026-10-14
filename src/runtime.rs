@@ -103,7 +103,6 @@ struct SecRow {
     qty_scale: i16,
 }
 
-
 /// Project the reference surface (refdata securities + tick bands) into the
 /// `EnvState` instruments. Deterministic u32 projection of the security
 /// UUID — the same FNV-1a-32 the ME shard plane uses (`me::instrument_id_of`,
@@ -127,24 +126,22 @@ pub async fn load_snapshot(pool: &sqlx::PgPool, env_id: Uuid) -> EnvState {
     // so the projection multiplies by 10^price_scale).
     let mut bands: std::collections::HashMap<Uuid, Vec<(i128, i128)>> =
         std::collections::HashMap::new();
-    for (rule, min_price, tick_value) in sqlx::query_as::<_, (Uuid, rust_decimal::Decimal, rust_decimal::Decimal)>(
-        r#"SELECT rule_id, min_price, tick_value
+    for (rule, min_price, tick_value) in
+        sqlx::query_as::<_, (Uuid, rust_decimal::Decimal, rust_decimal::Decimal)>(
+            r#"SELECT rule_id, min_price, tick_value
              FROM refdata.tick_rule_value
             WHERE env_id = $1
             ORDER BY rule_id, min_price ASC"#,
-    )
-    .bind(env_id)
-    .fetch_all(&mut *ctx)
-    .await
-    .unwrap_or_default()
+        )
+        .bind(env_id)
+        .fetch_all(&mut *ctx)
+        .await
+        .unwrap_or_default()
     {
         bands
             .entry(rule)
             .or_default()
-            .push((
-                min_price.mantissa(),
-                tick_value.mantissa(),
-            ));
+            .push((min_price.mantissa(), tick_value.mantissa()));
     }
 
     // Holidays: markets closed today (declared cross-schema read:
@@ -560,7 +557,11 @@ pub async fn publish_exposure(state: &crate::RiskState) {
     let snapshot = exposure_snapshot(state);
     state
         .membus
-        .publish_stream(EXPOSURE_FAMILY, "exchange8:risk:exposure:snapshot", snapshot)
+        .publish_stream(
+            EXPOSURE_FAMILY,
+            "exchange8:risk:exposure:snapshot",
+            snapshot,
+        )
         .await;
 }
 
@@ -763,5 +764,3 @@ pub fn stage_egress(
         None => Ok(()), // writers not booted (tests) — drop silently
     }
 }
-
-

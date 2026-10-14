@@ -33,9 +33,11 @@ pub enum Decision {
 /// (market:status events); the pure core only reads them.
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum MarketPhase {
     /// Pre-open: DAY+LIMIT quote-only rules .
     PreOpen,
+    #[default]
     Open,
     /// Postpone: no new orders .
     Postponed,
@@ -129,11 +131,6 @@ impl EnvState {
     }
 }
 
-impl Default for MarketPhase {
-    fn default() -> Self {
-        MarketPhase::Open
-    }
-}
 
 /// Evaluate the 21-check authorization matrix (design Risk §5.1).
 ///
@@ -344,11 +341,10 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
     }
 
     // --- 15. Post-only conflicts ----------------------------------------------
-    if order.post_only {
-        if order.tif == Tif::Fok || order.tif == Tif::Ioc || order.max_floor.is_some() {
+    if order.post_only
+        && (order.tif == Tif::Fok || order.tif == Tif::Ioc || order.max_floor.is_some()) {
             return Decision::Reject(WrongPostOnly);
         }
-    }
 
     // --- 16/17. Cross / bypass -----------------------------------------------
     if order.side.is_cross() {

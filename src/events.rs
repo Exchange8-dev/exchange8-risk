@@ -323,10 +323,7 @@ const OUTBOX_FLUSH_TICK_MS: u64 = 5;
 /// transaction per env group. The shell's relay (boot 8b) produces the
 /// outbox rows to Bus — this task only stages them. Called from the
 /// `with_state` closure (the shell's relay/pushers are already running).
-pub fn spawn_outbox_writer(
-    pool: sqlx::PgPool,
-    mut rx: tokio::sync::mpsc::Receiver<EgressItem>,
-) {
+pub fn spawn_outbox_writer(pool: sqlx::PgPool, mut rx: tokio::sync::mpsc::Receiver<EgressItem>) {
     tokio::spawn(async move {
         loop {
             let mut batch: Vec<EgressItem> = Vec::with_capacity(OUTBOX_BATCH_ITEMS);
@@ -334,8 +331,8 @@ pub fn spawn_outbox_writer(
                 break; // channel closed — drain done
             };
             batch.push(first);
-            let deadline =
-                tokio::time::Instant::now() + std::time::Duration::from_millis(OUTBOX_FLUSH_TICK_MS);
+            let deadline = tokio::time::Instant::now()
+                + std::time::Duration::from_millis(OUTBOX_FLUSH_TICK_MS);
             while batch.len() < OUTBOX_BATCH_ITEMS {
                 match tokio::time::timeout_at(deadline, rx.recv()).await {
                     Ok(Some(ev)) => batch.push(ev),
@@ -389,7 +386,9 @@ async fn write_item(
     let mut tx = pool.begin().await?;
     sentin8::shell::set_tenant_context(&mut tx, env_id).await;
     match item {
-        EgressItem::Reserved { order, identity, .. } => {
+        EgressItem::Reserved {
+            order, identity, ..
+        } => {
             // One trail row per touched bucket (the reservation's value
             // books once per bucket; the open-order slot is a count — no
             // trail row).
@@ -427,7 +426,9 @@ async fn write_item(
             )
             .await?;
         }
-        EgressItem::Released { trail, identity, .. } => {
+        EgressItem::Released {
+            trail, identity, ..
+        } => {
             // Replay-safe: the state predicate makes a re-delivered release
             // a no-op (saturating release at the ledger mirrors it).
             let n = sqlx::query(
@@ -455,13 +456,18 @@ async fn write_item(
                 AuditOp::Update,
                 "risk_reservation",
                 &trail.order_id.to_string(),
-                &format!("reservation released for order {} ({n} rows)", trail.order_id),
+                &format!(
+                    "reservation released for order {} ({n} rows)",
+                    trail.order_id
+                ),
                 None,
                 Some(trail.envelope_snapshot()),
             )
             .await?;
         }
-        EgressItem::Consumed { trail, identity, .. } => {
+        EgressItem::Consumed {
+            trail, identity, ..
+        } => {
             let n = sqlx::query(
                 r#"UPDATE risk.risk_reservation
                       SET state = 'consumed'
@@ -488,16 +494,24 @@ async fn write_item(
                 AuditOp::Execute,
                 "risk_reservation",
                 &trail.order_id.to_string(),
-                &format!("reservation consumed for order {} ({n} rows)", trail.order_id),
+                &format!(
+                    "reservation consumed for order {} ({n} rows)",
+                    trail.order_id
+                ),
                 None,
                 Some(trail.envelope_snapshot()),
             )
             .await?;
         }
-        EgressItem::Breach { bucket, breach, identity, .. } => {
+        EgressItem::Breach {
+            bucket,
+            breach,
+            identity,
+            ..
+        } => {
             // State-change record: the breach event + the audit row. No
             // trail row — the trail records reservations (DESIGN.md §3).
-            let envelope = envelope_from(*bucket, breach, identity, EV_LIMIT_BREACHED);
+            let envelope = envelope_from(bucket, breach, identity, EV_LIMIT_BREACHED);
             emit_outbox(&mut tx, identity, &envelope).await?;
             journal_mutation(
                 &mut tx,
@@ -511,8 +525,13 @@ async fn write_item(
             )
             .await?;
         }
-        EgressItem::Recovered { bucket, snapshot, identity, .. } => {
-            let envelope = envelope_from(*bucket, snapshot, identity, EV_LIMIT_UPDATED);
+        EgressItem::Recovered {
+            bucket,
+            snapshot,
+            identity,
+            ..
+        } => {
+            let envelope = envelope_from(bucket, snapshot, identity, EV_LIMIT_UPDATED);
             emit_outbox(&mut tx, identity, &envelope).await?;
             journal_mutation(
                 &mut tx,
