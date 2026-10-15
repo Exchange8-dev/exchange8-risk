@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:Risk rate guards + reservation ledger.
+//! Exchange8:Risk rate guards + reservation ledger.
 //!
 //! Two stateful extensions over the pure 21-check matrix (`core.rs`):
 //! - **Token-bucket rate guards** (§5.3): messages/sec + burst per connection,

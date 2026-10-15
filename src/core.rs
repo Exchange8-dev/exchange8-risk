@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:Risk synchronous pre-trade authorization core.
+//! Exchange8:Risk synchronous pre-trade authorization core.
 //!
 //! Pure function `authorize(order, &EnvState) -> Decision` implementing the
 //! 21-check matrix from the design (Risk §5.1, the platform spec /

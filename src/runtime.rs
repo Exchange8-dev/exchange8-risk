@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:Risk runtime wiring — the projection plane, the egress stage, and
+//! Exchange8:Risk runtime wiring — the projection plane, the egress stage, and
 //! the inbound consumer (DESIGN.md §2/§4/§7).
 //!
 //! - **Snapshot projection** — [`load_snapshot`] projects the reference
@@ -331,7 +331,7 @@ fn narrow_unused(_r: SecRow) {}
 
 /// The connection→limit projection input (the gateway's session registry
 /// rows, projected through the gateway's OWN DSN — the gateway connection
-/// table is Ex8:Gateway-owned and this service never joins it directly;
+/// table is Exchange8:Gateway-owned and this service never joins it directly;
 /// the SOD gate boot reads the snapshot the GATEWAY passes inside the
 /// authorize request's `connection_id`, so the ClientState ledger below
 /// keys on the numeric session id).

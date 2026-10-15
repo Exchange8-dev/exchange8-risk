@@ -1,7 +1,7 @@
-# BUSINESS.md: Ex8:Risk — Business Requirements & Functionality
+# BUSINESS.md: Exchange8:Risk — Business Requirements & Functionality
 
 > Audience: product owners, business analysts, and anyone evaluating what
-> Ex8:Risk **does for the business**. For architecture read `README.md`;
+> Exchange8:Risk **does for the business**. For architecture read `README.md`;
 > for wire-level detail read `DESIGN.md`.
 
 ## 1. Business Purpose
@@ -47,16 +47,16 @@
 
 | Concern | Owning service |
 |---|---|
-| Client connectivity, sessions, protocol parsing (FIX, OUCH, REST) | Ex8:Gateway |
-| Matching, order books, fill allocation | Ex8:ME |
-| Position ledger, mark-to-market, margining, liquidation (derivatives risk) | Ex8:Margin |
-| Smart order routing | Ex8:SOR |
-| Parent orders, allocations, drop copy | Ex8:OMS |
-| Reference data (instruments, tick regimes, calendars, books) | Ex8:RefData |
-| Trade persistence, clearing, netting | Ex8:Clearing |
-| Settlement of cleared trades | Ex8:Settlement |
-| Market surveillance | Ex8:Surveillance |
-| Corporate actions | Ex8:Corporate Actions (vertical design) |
+| Client connectivity, sessions, protocol parsing (FIX, OUCH, REST) | Exchange8:Gateway |
+| Matching, order books, fill allocation | Exchange8:ME |
+| Position ledger, mark-to-market, margining, liquidation (derivatives risk) | Exchange8:Margin |
+| Smart order routing | Exchange8:SOR |
+| Parent orders, allocations, drop copy | Exchange8:OMS |
+| Reference data (instruments, tick regimes, calendars, books) | Exchange8:RefData |
+| Trade persistence, clearing, netting | Exchange8:Clearing |
+| Settlement of cleared trades | Exchange8:Settlement |
+| Market surveillance | Exchange8:Surveillance |
+| Corporate actions | Exchange8:Corporate Actions (vertical design) |
 | Identity, token issuance, FIX session keys | Sentin8:Auth |
 | Declarative policy engine and admin surface | Shield (Sentin8:Policy) |
 | Durable event fan-out and audit archival | Sentin8:Bus / Sentin8:Sys |
@@ -184,7 +184,7 @@ policy-set updates, and start-of-day consumption seeds from clearing.
 
 ## 6. Target-User Roles & Use Cases
 
-| Persona | Role | What they do with Ex8:Risk |
+| Persona | Role | What they do with Exchange8:Risk |
 |---|---|---|
 | Retail / institutional trader | Order submitter (via broker/OMS) | Experiences the gate only through outcomes: instant accept, or an exact reject explaining what to fix (size, credit, phase, short sale, shape) |
 | Sell-side broker / market maker | Quoting member | Operates inside their booked credit and open-order limits; rate guards apply fairly per connection |
@@ -221,18 +221,18 @@ policy-set updates, and start-of-day consumption seeds from clearing.
 
 ## 8. Dependencies & Reliance
 
-- **Ex8:Gateway** — the only order-admission caller; it owns sessions,
+- **Exchange8:Gateway** — the only order-admission caller; it owns sessions,
   protocol translation, shape validation, and the fail-closed behavior on
   risk unavailability.
-- **Ex8:RefData** — instrument configuration needed by the matrix
+- **Exchange8:RefData** — instrument configuration needed by the matrix
   (status, tick regime, lot size, shortable cell, LIS thresholds,
   capacities, TIFs); consumed as snapshot events, never joined from SQL.
-- **Ex8:Clearing** — day-so-far consumption truth for start-of-day
+- **Exchange8:Clearing** — day-so-far consumption truth for start-of-day
   seeding (fills and working orders from the prior session).
-- **Ex8:Margin** — prospective supplier of margin requirements for
+- **Exchange8:Margin** — prospective supplier of margin requirements for
   derivative instruments' pre-trade checks (this service never computes
   margin itself).
-- **Ex8:ME / Ex8:OMS / Ex8:SOR** — lifecycle events (fills, kills,
+- **Exchange8:ME / Exchange8:OMS / Exchange8:SOR** — lifecycle events (fills, kills,
   completions) that release or convert reservations.
 - **Sentin8:Auth** — all identity issuance/verification; M2M workloads
   (`exchange8:risk`/`risk`, `risk-audit`, `exchange8-risk-tls`),

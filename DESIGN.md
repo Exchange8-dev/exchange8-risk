@@ -1,23 +1,23 @@
-# DESIGN.md: Ex8:Risk — Detailed Design Document
+# DESIGN.md: Exchange8:Risk — Detailed Design Document
 
 ## 1. Scope & Context
 
-Ex8:Risk owns synchronous pre-trade authorization for one environment: the
+Exchange8:Risk owns synchronous pre-trade authorization for one environment: the
 21-check authorization matrix, the notional/open-order/message-rate limit
 ledgers and their reservation trail, the per-connection rate guards, and
 the per-env exposure snapshot publication. It explicitly does **not** own:
 
-- client protocols and session admission — Ex8:Gateway terminates FIX/
+- client protocols and session admission — Exchange8:Gateway terminates FIX/
   OUCH/REST, validates shape, and calls the pre-check;
-- matching — Ex8:ME consumes only authorized orders and is not a risk gate;
-- position, mark-to-market, margining, liquidation, funding — Ex8:Margin
+- matching — Exchange8:ME consumes only authorized orders and is not a risk gate;
+- position, mark-to-market, margining, liquidation, funding — Exchange8:Margin
   (the asynchronous derivatives risk service; this service may consult its
   margin requirements but never computes them);
 - limit-definitions ownership for other services; the `risk` schema's
   tables are this service's alone;
-- reference data (instruments, calendars, tick regimes) — Ex8:RefData;
+- reference data (instruments, calendars, tick regimes) — Exchange8:RefData;
   Risk consumes its snapshots;
-- trade persistence and clearing — Ex8:Clearing (Risk reads day-so-far
+- trade persistence and clearing — Exchange8:Clearing (Risk reads day-so-far
   consumption to seed buckets at start-of-day);
 - event durability, audit archival, identity, TLS — platform planes
   (Sentin8:Bus, Sentin8:Sys, Sentin8:Auth, `sentin8-tls`, Shield).
@@ -27,11 +27,11 @@ the per-env exposure snapshot publication. It explicitly does **not** own:
 ```mermaid
 graph TD
     subgraph Env["exchange8 environment (one env_id per tenant env)"]
-        GW["Ex8:Gateway (submission pipeline)"]
-        RISK["Ex8:Risk (exchange8-risk)"]
-        CLR["Ex8:Clearing (day-so-far consumption)"]
-        REF["Ex8:RefData (instruments, tick regimes, calendars)"]
-        MGN["Ex8:Margin (margin requirements, derivatives)"]
+        GW["Exchange8:Gateway (submission pipeline)"]
+        RISK["Exchange8:Risk (exchange8-risk)"]
+        CLR["Exchange8:Clearing (day-so-far consumption)"]
+        REF["Exchange8:RefData (instruments, tick regimes, calendars)"]
+        MGN["Exchange8:Margin (margin requirements, derivatives)"]
     end
     AUTH["Sentin8:Auth (issuer, JWKS, certificate identity)"]
     BUSP["Sentin8:Bus (POST /v1/produce)"]
@@ -146,7 +146,7 @@ graph TD
 ```mermaid
 sequenceDiagram
     autonumber
-    participant GW as Ex8:Gateway
+    participant GW as Exchange8:Gateway
     participant AU as Auth verify + Shield (step 1–5)
     participant RC as RiskCache (ArcSwap snapshot)
     participant MAT as core.rs authorize (checks 1–21)
@@ -183,7 +183,7 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant UI as Admin (Sentin8:Dash → Sentin8:BFF)
-    participant RISK as Ex8:Risk admin routes
+    participant RISK as Exchange8:Risk admin routes
     participant SH as Shield cache (SharedAdminState)
     participant LED as ReservationLedger (limits)
     participant DBX as risk.outbox / risk.audit_journal
@@ -206,7 +206,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant GWX as Ex8:Gateway
+    participant GWX as Exchange8:Gateway
     participant AUTHX as Auth/Shield pipeline
     participant MX as core.rs authorize
     participant FIX as FIX member OMS
@@ -316,7 +316,7 @@ Per-table notes:
 - In-memory only: the `EnvState` snapshot (instruments, clients, market
   phase), the `LimitsLedger` per-connection counters, and the token
   buckets. Reference data (instruments, tick regimes) belongs to
-  Ex8:RefData's tables — this schema holds no copy of it.
+  Exchange8:RefData's tables — this schema holds no copy of it.
 
 ### Reservation lifecycle
 
@@ -360,9 +360,9 @@ Events use colons only — never dots.
 sequenceDiagram
     autonumber
     participant CLI as Market participant (FIX/OUCH/REST)
-    participant GWY as Ex8:Gateway
-    participant RKS as Ex8:Risk
-    participant MES as Ex8:ME
+    participant GWY as Exchange8:Gateway
+    participant RKS as Exchange8:Risk
+    participant MES as Exchange8:ME
     participant BUSX as Sentin8:Bus
     CLI->>GWY: new order (session-authenticated)
     GWY->>GWY: shape validation (gateway-local)
@@ -394,8 +394,8 @@ flowchart TD
     E -->|network / 5xx| G["relay_attempts++; leave unrelayed; backoff retry"]
     G --> B
     F --> H["Bus stream family (XADD)"]
-    H -->|direct consumer| I1["Ex8:Clearing consumes (limit/reservation audit)"]
-    H -->|direct consumer| I2["Ex8:Surveillance consumers where declared"]
+    H -->|direct consumer| I1["Exchange8:Clearing consumes (limit/reservation audit)"]
+    H -->|direct consumer| I2["Exchange8:Surveillance consumers where declared"]
     H -->|subscription| I3["Trigger subscription (consumer group) → function / workflow where declared"]
 ```
 
@@ -657,7 +657,7 @@ graph TD
   business configuration decision).
 - The replace-validation mount (cancel/replace inheriting checks 1–4 plus
   re-price/re-notional) at the same authorize surface.
-- Synchronous pre-trade options checks consulting the Ex8:Margin margin
+- Synchronous pre-trade options checks consulting the Exchange8:Margin margin
   requirement (derivatives extension: the cross-service hook and caching
   of the consulted requirement are future design).
 

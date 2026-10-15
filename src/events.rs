@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:Risk typed event envelopes (DBX producer path).
+//! Exchange8:Risk typed event envelopes (DBX producer path).
 //!
 //! - **Vocabulary + envelope builders** — the `exchange8:risk:{resource}:
 //!   {operation}` names, the `EventIdentity` block, and the

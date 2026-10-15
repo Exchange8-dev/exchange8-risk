@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:Risk SQL integration tests — RLS matrix replica (design
+//! Exchange8:Risk SQL integration tests — RLS matrix replica (design
 //! `services/risk/DESIGN.md` §9).
 //!
 //! Runs against the live platform PostgreSQL (18) as the `exchange8_probe`

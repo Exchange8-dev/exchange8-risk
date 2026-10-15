@@ -1,12 +1,12 @@
-# README.md: Ex8:Risk
+# README.md: Exchange8:Risk
 
 ## 1. Summary
 
-Ex8:Risk (service type `exchange8:risk`, binary `exchange8-risk`) is the
+Exchange8:Risk (service type `exchange8:risk`, binary `exchange8-risk`) is the
 **synchronous pre-trade authorization service** of the exchange8 vertical —
 the capital-markets matching tier of the Sentin8 platform. Every order the
-Ex8:Gateway submission pipeline accepts is evaluated here, against a fixed
-**21-check authorization matrix**, before any of it may reach Ex8:ME:
+Exchange8:Gateway submission pipeline accepts is evaluated here, against a fixed
+**21-check authorization matrix**, before any of it may reach Exchange8:ME:
 session and instrument state, book tokens and entitlements, order shape
 (ord type, TIF, tick, lot, iceberg floor, peg, cross, bypass, post-only,
 STP shape), the shortable matrix, Large-In-Scale gating for hidden orders,
@@ -68,11 +68,11 @@ Questions).
 ```mermaid
 graph TD
     subgraph Caller["Upstream callers"]
-        GW["Ex8:Gateway submission pipeline"]
+        GW["Exchange8:Gateway submission pipeline"]
         ADM["Exchange admin surface (Sentin8:Dash RFW via Sentin8:BFF)"]
     end
 
-    subgraph RISK["Ex8:Risk process (exchange8-risk)"]
+    subgraph RISK["Exchange8:Risk process (exchange8-risk)"]
         HTTP["axum surface: /v1/health + Shield admin API (/v1/admin/policy-sets, /v1/admin/relations, /v1/admin/attributes)"]
         SNAP["RiskCache — EnvState snapshot (copy, mutate, atomic swap)"]
         CORE["core.rs — authorize(): 21-check matrix (pure)"]
@@ -193,7 +193,7 @@ and the hot path I/O-free.
     limit scopes:* every unknown accepts-by-default would make a stale cache
     a silent control failure; the service rejects instead (the old spec's
     "unchecked flow when no limit configured" is deliberately not honored).
-  - *Merging with Ex8:Margin.* Position, mark-to-market, margining, and
+  - *Merging with Exchange8:Margin.* Position, mark-to-market, margining, and
     liquidation are asynchronous/stateful with a different failure model;
     this service stays synchronous-only, and consults margin requirements
     for derivative orders rather than computing them.
@@ -265,7 +265,7 @@ and the hot path I/O-free.
   tested; the venue-wide defaults are a business configuration decision.
 - The replace-validation matrix (cancel/replace inherits the session,
   book, and price/notional re-checks) mounts at the same authorize surface.
-- Synchronous pre-trade options checks consulting an Ex8:Margin margin
+- Synchronous pre-trade options checks consulting an Exchange8:Margin margin
   requirement (the cross-service hook) are deferred to the derivatives
   extension design.
 

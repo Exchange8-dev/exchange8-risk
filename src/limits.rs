@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Ex8:Risk limits ledger + cache lifecycle.
+//! Exchange8:Risk limits ledger + cache lifecycle.
 //!
 //! - **Capitalization/credit buckets** (DESIGN.md §3/§7): notional reservation tracking
 //!   (submit reserves qty×price; fill converts reservation to spent credit;
