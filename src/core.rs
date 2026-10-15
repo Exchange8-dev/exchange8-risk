@@ -32,8 +32,7 @@ pub enum Decision {
 /// All variants are constructed by the axum shell / event consumers
 /// (market:status events); the pure core only reads them.
 #[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum MarketPhase {
     /// Pre-open: DAY+LIMIT quote-only rules .
     PreOpen,
@@ -130,7 +129,6 @@ impl EnvState {
         self.clients.get(&connection_id)
     }
 }
-
 
 /// Evaluate the 21-check authorization matrix (design Risk §5.1).
 ///
@@ -342,9 +340,10 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
 
     // --- 15. Post-only conflicts ----------------------------------------------
     if order.post_only
-        && (order.tif == Tif::Fok || order.tif == Tif::Ioc || order.max_floor.is_some()) {
-            return Decision::Reject(WrongPostOnly);
-        }
+        && (order.tif == Tif::Fok || order.tif == Tif::Ioc || order.max_floor.is_some())
+    {
+        return Decision::Reject(WrongPostOnly);
+    }
 
     // --- 16/17. Cross / bypass -----------------------------------------------
     if order.side.is_cross() {
