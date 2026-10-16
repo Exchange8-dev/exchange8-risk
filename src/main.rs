@@ -12,13 +12,8 @@
 
 #![allow(dead_code)]
 
-// Global allocator — mimalloc for every exchange8 service binary
 // (master design §11.1; see DESIGN.md §2). Workers (bus consumers,
 // session supervisors, purge jobs) are in-process tokio tasks, so the
-// binary-level allocator covers them all.
-#[global_allocator]
-static GLOBAL_ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
-
 mod core;
 mod events;
 mod guards;
