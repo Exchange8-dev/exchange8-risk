@@ -92,7 +92,6 @@ graph TD
 The binary boots via `sentin8::shell::serve`:
 
 1. `Sentin8Shell::new("exchange8:risk", "EXCHANGE8_RISK")` — registration,
-   DB pool (`EXCHANGE8_RISK_DATABASE_URL`), `/v1/health`, mimalloc global
    allocator, graceful drain under `make upgrade-instance`.
 2. `with_state` builds `RiskState { core, membus }` — `ServiceBus::connect`
    attaches the MemBus publish handle (`risk.exposure`, pub/sub class,

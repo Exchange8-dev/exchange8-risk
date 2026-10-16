@@ -23,7 +23,6 @@ released on kills/cancels), open-order slots, and message-rate token
 buckets; its durable trail is `risk.risk_reservation`. The binary rides the
 shared Sentin8 platform shell (`sentin8::shell`): axum HTTP/TLS surface,
 `--print-registration` self-description, DB pool, `/v1/health`, the Shield
-(declarative-policy) admin API mount, mimalloc global allocator, and
 graceful drain. Event egress is the platform trio: in-process MemBus
 publication (`risk.exposure` per-env exposure snapshots, newest-wins), the
 local `risk.outbox` relayed to Sentin8:Bus, and the `risk.audit_journal`

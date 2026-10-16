@@ -2,7 +2,11 @@
   "vertical": "exchange8",
   "services": [
     {
-      "service_type": "exchange8:risk"
+      "service_type": "exchange8:risk",
+      "telemetry_property": {
+        "slug": "risk",
+        "name": "Exchange8:Risk Telemetry"
+      }
     }
   ]
 }
