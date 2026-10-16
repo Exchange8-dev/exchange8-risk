@@ -156,7 +156,7 @@ sequenceDiagram
     GW->>AU: POST /v1/authorize (AuthorizeRequest = normalized ExchangeOrder, cert-bound M2M)
     AU->>AU: bearer verify → tenant resolve → Shield evaluate (scope-mirror, exchange8:risk:authorize)
     alt Shield denies (no-set / no-match / forbid)
-        AU-->>GW: 403 (fail-closed; shadow would deny logged, never blocked)
+        AU-->>GW: 403 (fail-closed, shadow would deny logged, never blocked)
     else permitted
         AU->>RC: snapshot() (one Arc clone)
         RC-->>MAT: EnvState (market phase, instrument, client)
@@ -189,15 +189,15 @@ sequenceDiagram
     participant DBX as risk.outbox / risk.audit_journal
 
     UI->>RISK: limit upsert (delegated bearer user token, scope gate per admin scopes)
-    RISK->>SH: Shield evaluate (mirror set; tenant forbid wins)
+    RISK->>SH: Shield evaluate (mirror set, tenant forbid wins)
     alt denied
         RISK-->>UI: 403 (fail-closed)
     else allowed
         RISK->>LED: set_limit(bucket, scope, limit_value) — consumption preserved
         RISK->>DBX: same-tx write: limit row + audit journal entry
-        DBX-->>DBX: pg_notify risk_outbox_changed → relay; audit pusher → Sys
+        DBX-->>DBX: pg_notify risk_outbox_changed → relay, audit pusher → Sys
         RISK-->>UI: 200
-        Note over LED: refresh is copy→mutate→swap; in-flight readers keep the old snapshot
+    Note over UI,DBX: refresh is copy→mutate→swap, in-flight readers keep the old snapshot
     end
 ```
 
@@ -326,7 +326,7 @@ stateDiagram-v2
     reserved --> consumed: fill (qty×price converts reservation to spent credit)
     reserved --> released: kill / cancel / STP decrement / admin correction
     consumed --> [*]: credit spent (open-order slot freed at completion)
-    released --> [*]: headroom restored (saturating release; replay-safe)
+    released --> [*]: headroom restored (saturating release, replay-safe)
 ```
 
 ## 4. API Surface
@@ -513,7 +513,7 @@ sequenceDiagram
     DBX-->>LED: full EnvState snapshot built → RiskCache::from_sod
     LED->>LED: seed_consumed + set_limit per row (ledger rebuilt)
     SHELL->>DBX: reset relay: unrelayed risk.outbox rows
-    SHELL->>BUSE: POST /v1/produce (idempotency_key = row id; no duplicate delivery)
+    SHELL->>BUSE: POST /v1/produce (idempotency_key = row id, no duplicate delivery)
     SHELL-->>OPS: ready (health Active in captain registry)
 ```
 
