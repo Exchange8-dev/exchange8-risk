@@ -1,4 +1,4 @@
-# BUSINESS.md: Exchange8:Risk — Business Requirements & Functionality
+# Exchange8:Risk — Business Requirements & Functionality
 
 > Audience: product owners, business analysts, and anyone evaluating what
 > Exchange8:Risk **does for the business**. For architecture read `README.md`;
