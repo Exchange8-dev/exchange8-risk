@@ -1515,6 +1515,7 @@ dependencies = [
  "axum",
  "chrono",
  "exchange8",
+ "futures-util",
  "rust_decimal",
  "sentin8",
  "serde",

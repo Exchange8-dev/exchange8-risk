@@ -617,51 +617,98 @@ pub fn spawn_consumer(state: Arc<crate::RiskState>, env_id: Uuid) {
                 }
             }
         };
+        // BUSCONNP-1: the SSE direct-consumer pattern — one long-lived
+        // `GET /v1/consume/sse` connection per epoch, per-message acks.
+        // The bus holds the blocking read server-side; this loop never
+        // issues short-interval `POST /v1/consume` blocking polls.
         loop {
             let resp = match bus
-                .consume(&sentin8::bus::contracts::ConsumeRequest {
-                    stream_family: CONSUME_STREAM_FAMILY.into(),
-                    consumer_group: CONSUMER_GROUP.into(),
-                    max_count: 500,
-                    block_ms: 1000,
-                })
+                .sse_consume(CONSUME_STREAM_FAMILY, CONSUMER_GROUP)
                 .await
             {
                 Ok(r) => r,
                 Err(e) => {
-                    tracing::debug!(error = %e, "risk lifecycle consume unavailable; retrying");
+                    tracing::warn!(error = %e, "risk lifecycle SSE connect failed; retrying");
                     tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                     continue;
                 }
             };
-            for msg in resp.messages {
-                let mut egress = Vec::new();
-                match msg.event_type.as_str() {
-                    EV_CONSUME_TRADE_EXECUTED => {
-                        if let Ok(p) = serde_json::from_value::<OrderExecuted>(msg.payload.clone())
-                        {
-                            egress = apply_executed(&state, env_id, &p, &msg.message_id);
-                        }
-                    }
-                    EV_CONSUME_ORDER_KILLED => {
-                        if let Ok(p) = serde_json::from_value::<OrderKilled>(msg.payload.clone()) {
-                            egress = apply_killed(&state, env_id, &p, &msg.message_id);
-                        }
-                    }
-                    _ => {}
-                }
-                for item in egress {
-                    let env = item.env_id();
-                    if crate::runtime::stage_egress(&state, item, env).is_err() {
-                        tracing::warn!("risk consumer: egress channel saturated — item dropped");
-                    }
-                }
-                let _ = bus
-                    .ack(CONSUME_STREAM_FAMILY, CONSUMER_GROUP, &msg.message_id)
-                    .await;
+            tracing::info!(
+                family = CONSUME_STREAM_FAMILY,
+                group = CONSUMER_GROUP,
+                "risk: lifecycle SSE consumer connected"
+            );
+            if let Err(e) = lifecycle_sse_loop(&state, &bus, resp.bytes_stream(), env_id).await {
+                tracing::warn!(error = %e, "risk: lifecycle SSE loop exited");
             }
+            tracing::info!("risk: lifecycle SSE disconnected — reconnecting");
         }
     });
+}
+
+/// Process the lifecycle SSE stream until it drops: decode each ME
+/// event, drive the ledger's release/consume side, stage the egress, and
+/// ack. Unknown events are acked and skipped (the family carries other
+/// vertical producers' events — only ME lifecycle vocabulary acts here).
+async fn lifecycle_sse_loop<T, E>(
+    state: &Arc<crate::RiskState>,
+    bus: &sentin8::bus::client::BusClient,
+    resp: impl futures_util::Stream<Item = Result<T, E>> + Unpin,
+    env_id: Uuid,
+) -> anyhow::Result<()>
+where
+    T: AsRef<[u8]>,
+    E: std::fmt::Display,
+{
+    use futures_util::StreamExt;
+
+    let mut stream = resp;
+    let mut buffer = String::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        buffer.push_str(&String::from_utf8_lossy(chunk.as_ref()));
+        // SSE events are separated by blank lines; data rides `data:` lines.
+        while let Some(blank) = buffer.find("\n\n") {
+            let event = buffer[..blank].to_string();
+            buffer = buffer[blank + 2..].to_string();
+            let data_line = event
+                .lines()
+                .filter_map(|l| l.strip_prefix("data:").map(|s| s.trim_start()))
+                .collect::<Vec<_>>()
+                .join("");
+            if data_line.is_empty() {
+                continue; // heartbeat comment
+            }
+            let Ok(msg) = serde_json::from_str::<sentin8::bus::contracts::Message>(&data_line)
+            else {
+                continue;
+            };
+            let mut egress = Vec::new();
+            match msg.event_type.as_str() {
+                EV_CONSUME_TRADE_EXECUTED => {
+                    if let Ok(p) = serde_json::from_value::<OrderExecuted>(msg.payload.clone()) {
+                        egress = apply_executed(&state, env_id, &p, &msg.message_id);
+                    }
+                }
+                EV_CONSUME_ORDER_KILLED => {
+                    if let Ok(p) = serde_json::from_value::<OrderKilled>(msg.payload.clone()) {
+                        egress = apply_killed(&state, env_id, &p, &msg.message_id);
+                    }
+                }
+                _ => {}
+            }
+            for item in egress {
+                let env = item.env_id();
+                if crate::runtime::stage_egress(state, item, env).is_err() {
+                    tracing::warn!("risk consumer: egress channel saturated — item dropped");
+                }
+            }
+            let _ = bus
+                .ack(CONSUME_STREAM_FAMILY, CONSUMER_GROUP, &msg.message_id)
+                .await;
+        }
+    }
+    Ok(())
 }
 
 /// The consumed trade event (the ME vocabulary — the master design §7.1).

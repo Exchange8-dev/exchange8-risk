@@ -132,7 +132,7 @@ Emitted via the platform event vocabulary
 | Exposure snapshot (`risk.exposure`, realtime MemBus publication) | After each decision cycle affecting exposure; each snapshot fully supersedes the last |
 | Guard events | A connection's rate bucket or limit bucket trips (throttle/limit exceeded recorded with the reject code) |
 
-Inbound (consumed): instrument/reference-data state updates, market phase
+Inbound (consumed): instrument/reference-data state updates, market phase — ME trade/kill lifecycle events arrive over a live Bus stream subscription (no polling delay; missed events recovered by redelivery)
 changes, customer/connection state and limit entitlement changes, Shield
 policy-set updates, and start-of-day consumption seeds from clearing.
 

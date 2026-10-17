@@ -338,6 +338,7 @@ stateDiagram-v2
 | Admin (declared) | `GET /v1/admin/ui/limits` + `/v1/admin/limits`; `GET /v1/admin/ui/reservations` + `/v1/admin/reservations` | role `exchange8:risk:admin` (admin scopes: `exchange8:risk:read`, `exchange8:risk:write`, `exchange8:risk:policy:{read,write}`) | RFW pages `limits` (icon `0xe06d`), `reservations` (icon `0xe88f`) |
 | Health | `GET /v1/health` | unauthenticated (shell) | liveness for Sentin8:Captain |
 | Out | Bus `POST /v1/produce` | M2M `sentin8:bus:produce` | workloads `exchange8:risk`/`risk`, plus `sentin8:stat:measure` |
+| Out (consume) | Bus `GET /v1/consume/sse` + `POST /v1/ack` | M2M `sentin8:bus:consume` | lifecycle consumer (family `exchange8`, group `exchange8-risk-lifecycle`) — the SSE direct-consumer pattern (BUSCONNP-1); ME lifecycle events drive the ledger's release/consume side. |
 | Out | Sys `POST /v1/audit` | M2M `sentin8:sys:audit:write` | workload `risk-audit` |
 | MemBus | `risk.exposure` publication | in-process (workload identity, Valkey) | pub/sub class, newest-wins per env |
 | TLS | `GET /v1/resolve/hostname` (Sys owner API) | M2M `sentin8:sys:instances:read` | workload `exchange8-risk-tls` (database-free resolve) |
@@ -393,8 +394,8 @@ flowchart TD
     E -->|network / 5xx| G["relay_attempts++; leave unrelayed; backoff retry"]
     G --> B
     F --> H["Bus stream family (XADD)"]
-    H -->|direct consumer| I1["Exchange8:Clearing consumes (limit/reservation audit)"]
-    H -->|direct consumer| I2["Exchange8:Surveillance consumers where declared"]
+    H -->|"direct consumer, SSE (BUSCONNP-1)"| I1["Exchange8:Clearing consumes (limit/reservation audit)"]
+    H -->|direct consumer, SSE| I2["Exchange8:Surveillance consumers where declared"]
     H -->|subscription| I3["Trigger subscription (consumer group) → function / workflow where declared"]
 ```
 
