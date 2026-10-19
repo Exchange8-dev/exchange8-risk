@@ -3,7 +3,7 @@
 ## 1. Summary
 
 Exchange8:Risk (service type `exchange8:risk`, binary `exchange8-risk`) is the
-**synchronous pre-trade authorization service** of the exchange8 vertical —
+**synchronous pre-trade authorization service** of the exchange8 vertical -
 the capital-markets matching tier of the Sentin8 platform. Every order the
 Exchange8:Gateway submission pipeline accepts is evaluated here, against a fixed
 **21-check authorization matrix**, before any of it may reach Exchange8:ME:
@@ -11,8 +11,8 @@ session and instrument state, book tokens and entitlements, order shape
 (ord type, TIF, tick, lot, iceberg floor, peg, cross, bypass, post-only,
 STP shape), the shortable matrix, Large-In-Scale gating for hidden orders,
 price protection, the notional credit limit, and per-connection rate
-guards. The hot path is a pure function — `authorize(order, &EnvState) ->
-Decision` — over an atomically swapped snapshot of environment state; every
+guards. The hot path is a pure function - `authorize(order, &EnvState) ->
+Decision` - over an atomically swapped snapshot of environment state; every
 check is unit-testable without I/O, and the first failing check carries the
 exact reject code from the behavior catalog
 (`design/behavior-catalog/reject-codes.json`). Unknown state fails closed.
@@ -40,13 +40,13 @@ role `exchange8_risk_service` (no BYPASSRLS), DSN
 - **Credit protection before fill.** The notional credit limit is enforced
   as a *reservation ledger*: buying power is booked at submission, converts
   to spent credit only through fills, and returns to headroom on
-  kill/cancel — exposure can never be double-committed.
+  kill/cancel - exposure can never be double-committed.
 - **Exchange-core protection from client storms.** A per-connection
   token-bucket rate guard (burst + sustained rate) fails closed, so a
   runaway feed throttles at the gate instead of loading the matching core.
 - **A pure, testable core.** All authorization state is preloaded into an
   immutable snapshot; the 21-check function is pure, deterministic, and
-  table-tested against the reject-code catalog — no database, clock, or
+  table-tested against the reject-code catalog - no database, clock, or
   allocator dependency on the hot path.
 - **No bespoke infrastructure.** Identity, TLS, declarative policy,
   durable events, and audit delivery are platform planes (Sentin8:Auth,
@@ -73,21 +73,21 @@ graph TD
 
     subgraph RISK["Exchange8:Risk process (exchange8-risk)"]
         HTTP["axum surface: /v1/health + Shield admin API (/v1/admin/policy-sets, /v1/admin/relations, /v1/admin/attributes)"]
-        SNAP["RiskCache — EnvState snapshot (copy, mutate, atomic swap)"]
-        CORE["core.rs — authorize(): 21-check matrix (pure)"]
-        GUA["guards.rs — TokenBucket rate guards + bucket counters"]
-        LIM["limits.rs — LimitsLedger (reserve / on_fill / on_done / release)"]
-        MB["MemBus ServiceBus — risk.exposure (newest-wins)"]
+        SNAP["RiskCache - EnvState snapshot (copy, mutate, atomic swap)"]
+        CORE["core.rs - authorize(): 21-check matrix (pure)"]
+        GUA["guards.rs - TokenBucket rate guards + bucket counters"]
+        LIM["limits.rs - LimitsLedger (reserve / on_fill / on_done / release)"]
+        MB["MemBus ServiceBus - risk.exposure (newest-wins)"]
         DB[("risk.risk_limit + risk.risk_reservation + risk.outbox + risk.audit_journal (schema risk, db exchange8)")]
-        REG["registration.rs — scope-mirror Shield set, pg role, M2M grants, RFW pages, error codes"]
+        REG["registration.rs - scope-mirror Shield set, pg role, M2M grants, RFW pages, error codes"]
     end
 
     subgraph Platform["Sentin8 platform planes"]
         AUTHPL["Sentin8:Auth (identity plane, JWKS, M2M)"]
-        SHIELD["Sentin8:Policy (Shield) — policy-sets cache"]
-        BUS["Sentin8:Bus — POST /v1/produce"]
-        SYSPL["Sentin8:Sys — POST /v1/audit + GET /v1/resolve/hostname"]
-        TLSP["sentin8-tls — exchange8-risk-tls resolver workload"]
+        SHIELD["Sentin8:Policy (Shield) - policy-sets cache"]
+        BUS["Sentin8:Bus - POST /v1/produce"]
+        SYSPL["Sentin8:Sys - POST /v1/audit + GET /v1/resolve/hostname"]
+        TLSP["sentin8-tls - exchange8-risk-tls resolver workload"]
     end
 
     GW -- "POST /v1/authorize · bearer cert-bound M2M · scope exchange8:risk:authorize" --> HTTP
@@ -109,44 +109,44 @@ The shell boots registration, the DB pool (`EXCHANGE8_RISK_DATABASE_URL`),
 the MemBus handle, and the router: `/v1/health` (shell) plus the shared
 Shield policy-admin mount (`/v1/admin/policy-sets*`, `/v1/admin/relations*`,
 `/v1/admin/attributes*`) over `HasPolicyAdmin`, so admin and request path
-share one policy cache. The decision modules — `core.rs` (the 21-check
+share one policy cache. The decision modules - `core.rs` (the 21-check
 matrix), `guards.rs` (token buckets + limit buckets), `limits.rs` (the
-reserve/release ledger and the snapshot cache) — carry no tokio, DB, or
+reserve/release ledger and the snapshot cache) - carry no tokio, DB, or
 clock dependencies, which is what makes the matrix exactly unit-testable
 and the hot path I/O-free.
 
 ## 4. Key Traits and Data Structures
 
-- **Decision** (`core.rs`) — the authorization result: allow with
+- **Decision** (`core.rs`) - the authorization result: allow with
   reservation ids to book in the same transaction, or reject with the exact
   `RejectCode` of the first failing check. Two outcomes only; the wire
   vocabulary (`exchange8::contracts::risk`) mirrors it as
   `AuthorizeResponse { decision, code }`.
-- **EnvState snapshot** — the whole environment an authorization needs:
+- **EnvState snapshot** - the whole environment an authorization needs:
   market phase, per-instrument `InstrumentState` (status, tick bands,
   Large-In-Scale configuration, shortable cell, max size, peg/EBBO posture,
   allowed capacities and TIFs), and per-connection `ClientState`
   (suspension, enablement, book tokens, entitlements, notional and
   open-order limits, working count, rate permits). Readers clone the `Arc`;
-  refreshes build a copy, mutate, and swap atomically — no torn reads.
-- **LimitsLedger / ClientLedger** (`limits.rs`) — the mutable limit side
+  refreshes build a copy, mutate, and swap atomically - no torn reads.
+- **LimitsLedger / ClientLedger** (`limits.rs`) - the mutable limit side
   per connection: reserved vs spent notional, open-order slots, and a
   per-second token-bucket (capacity, refill). `reserve()` runs the full
-  pipeline in one call — rate permit, 21-check matrix, open-order slot,
-  notional reservation — and fails with a distinct outcome per bucket
+  pipeline in one call - rate permit, 21-check matrix, open-order slot,
+  notional reservation - and fails with a distinct outcome per bucket
   (rate / open-orders / notional exceeded). Fills convert reservation to
   spent credit; completion frees the slot; releases saturate (never
   underflow).
-- **TokenBucket / ReservationLedger** (`guards.rs`) — the general bucket
+- **TokenBucket / ReservationLedger** (`guards.rs`) - the general bucket
   machinery: continuous-refill token buckets deterministic under an
   injected clock (no hot-path syscalls), and `(bucket, scope)` limit
   counters (`Notional`, `OpenOrdersMax`) with reserve/release/seed and an
   audit journal. Unconfigured scopes fail closed.
-- **Contracts** (`exchange8::contracts::risk`) — the Gateway↔Risk wire
+- **Contracts** (`exchange8::contracts::risk`) - the Gateway↔Risk wire
   shapes (`AuthorizeRequest` is the normalized order, `AuthorizeResponse`
   the decision), plus the shared `RejectCode` catalog including the
   platform-added `RiskUnavailable`, `RateLimited`, and limit-guard codes.
-- **Service identity** (`registration.rs`) — the seeded `scope-mirror`
+- **Service identity** (`registration.rs`) - the seeded `scope-mirror`
   Shield policy set (action `exchange8:risk:authorize` over the live
   effective scope set and platform-admin scopes), the `exchange8_risk_service`
   PostgreSQL role (db `exchange8`, no BYPASSRLS), the M2M grant workloads
@@ -161,7 +161,7 @@ and the hot path I/O-free.
   - *Pure core + thin shell.* The 21-check function is a stateless pure
     function over an immutable snapshot; the shell owns identity, HTTP,
     and persistence. Determinism makes the matrix table-testable row by row
-    and keeps the synchronous gate's latency profile flat — a core that
+    and keeps the synchronous gate's latency profile flat - a core that
     queries a database per order could never give the caller a bounded
     response.
   - *Snapshot, not shared mutable state.* Authorization state is read-mostly
@@ -170,7 +170,7 @@ and the hot path I/O-free.
     `Arc` per request while a single owner mutates counters.
   - *Reserve-on-submit, release-on-event.* Notional credit is reserved when
     the order is authorized and released by lifecycle events
-    (fill converts to spent, kill/cancel releases) — a day-so-far consumption
+    (fill converts to spent, kill/cancel releases) - a day-so-far consumption
     model, seeded from Clearing, not a per-request recomputation.
 - **Dispatching.** The check pipeline is a fixed sequence of plain
   comparisons with an early-return reject; market phase and shortable cells
@@ -203,7 +203,7 @@ and the hot path I/O-free.
 ## 6. Internal Implementation & Invariants (Private Design)
 
 - **Check order is contract.** The 21 checks run in the documented order
-  and the first failure wins with its exact catalog code — clients screen
+  and the first failure wins with its exact catalog code - clients screen
   on codes, so reordering would change observable behavior.
 - **Fail-closed anchors.** Unknown connection → `ClientSuspended`-family
   reject; unknown instrument → id-side reject; missing book token or
@@ -224,13 +224,13 @@ and the hot path I/O-free.
 - **Notional math.** Priced orders compute `price × qty` with checked
   multiplication against the connection's notional limit; unpriced orders
   carry no in-core notional (the caller estimates at reference price before
-  calling). Overflow of the checked multiply rejects `Internal` — an
+  calling). Overflow of the checked multiply rejects `Internal` - an
   arithmetic anomaly is a defect, never an allowance.
 - **Reserve ordering.** The reserve pipeline takes the rate permit first
   (so a rate-limited caller never consumes evaluation work), then runs the
   static matrix, then the open-order slot, then the notional reservation; a
   static reject makes no ledger movement.
-- **Release discipline.** `release` and `on_done` saturate at zero — double
+- **Release discipline.** `release` and `on_done` saturate at zero - double
   releases from event replay are idempotent; `set_limit` refreshes the
   configured limit while preserving consumption; `seed_consumed` rebuilds
   day-so-far consumption at start-of-day.
@@ -249,7 +249,7 @@ and the hot path I/O-free.
 - The HTTP decision surfaces are declared and their handler shapes exist
   (`POST /v1/authorize`, `POST /v1/release`, the RFW `limits` /
   `reservations` data endpoints); the router currently mounts the Shield
-  admin API and health only — the handler mounting is the open integration
+  admin API and health only - the handler mounting is the open integration
   point.
 - The SOD loader and the event-driven cache refresh (instrument state,
   customer state, limit definitions) are the remaining projection work:
@@ -260,7 +260,7 @@ and the hot path I/O-free.
   per-change mapping is the open writer surface), and the durable
   `risk.risk_reservation` row writes mirroring the in-memory ledger journal.
 - Per-connection rate-limit configuration defaults (bucket capacity and
-  sustained rate per connection class) — the mechanism is implemented and
+  sustained rate per connection class) - the mechanism is implemented and
   tested; the venue-wide defaults are a business configuration decision.
 - The replace-validation matrix (cancel/replace inherits the session,
   book, and price/notional re-checks) mounts at the same authorize surface.

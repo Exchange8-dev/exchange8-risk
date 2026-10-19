@@ -3,7 +3,7 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Exchange8:RISK service binary — synchronous pre-trade authorization.
+//! Exchange8:RISK service binary - synchronous pre-trade authorization.
 //!
 //! Design: `design/sentin8-exchange8-risk-technical-design.md` (see the
 //! service doc for the exact file). Core logic in the sibling modules;
@@ -28,13 +28,13 @@ use std::sync::Arc;
 /// planes (see DESIGN.md §2/§7).
 ///
 /// Risk is a pub/sub-class publisher: `risk.exposure` per-env exposure
-/// snapshots — newest-wins (each snapshot fully supersedes the last).
+/// snapshots - newest-wins (each snapshot fully supersedes the last).
 /// The decision planes live beside the shell core:
-/// - `matrix` — the SOD-projected authorization snapshot (`RiskCache`,
+/// - `matrix` - the SOD-projected authorization snapshot (`RiskCache`,
 ///   copy→mutate→swap; the pure `authorize` reads it).
-/// - `ledger` — the reservation ledger (release/consume side + rate
+/// - `ledger` - the reservation ledger (release/consume side + rate
 ///   profiles; the consumer task and the authorize handler share it).
-/// - `breach` — the breach-episode tracker (state-change rule).
+/// - `breach` - the breach-episode tracker (state-change rule).
 pub struct RiskState {
     pub core: sentin8::shell::ServiceCore,
     pub membus: sentin8::membus::ServiceBus,
@@ -117,12 +117,12 @@ async fn main() -> anyhow::Result<()> {
             .with_registration(registration::print)
             .with_state(|core| async move {
                 // Risk publishes exposure snapshots (pub/sub
-                // class) onto the Memory Bus — DESIGN.md §4.
+                // class) onto the Memory Bus - DESIGN.md §4.
                 let membus =
                     sentin8::membus::ServiceBus::connect("exchange8:risk", &core.config.valkey_url)
                         .await;
                 // SOD projection: the gate never serves against an empty
-                // snapshot (fail-closed — DESIGN.md §6); the projection
+                // snapshot (fail-closed - DESIGN.md §6); the projection
                 // itself is best-effort here.
                 let env_id = runtime::resolve_env_id("exchange8:risk");
                 let snapshot = runtime::load_snapshot(&core.pool, env_id).await;

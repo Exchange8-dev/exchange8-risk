@@ -1,4 +1,4 @@
-# Exchange8:Risk — Business Requirements & Functionality
+# Exchange8:Risk - Business Requirements & Functionality
 
 > Audience: product owners, business analysts, and anyone evaluating what
 > Exchange8:Risk **does for the business**. For architecture read `README.md`;
@@ -12,7 +12,7 @@
   the connection's rate controls.
 - Enforce the venue's market rules at the door: trading phases, instrument
   halts, short-sale ability, hidden-order minimums, tick and lot
-  disciplines — every gate applied before a match is possible, never
+  disciplines - every gate applied before a match is possible, never
   after.
 - Give members precise, machine-usable feedback: every rejection returns
   the exact industry-standard reject code their order-management systems
@@ -91,8 +91,8 @@
 | Notional reservation | Authorizing an order books its limit-price value against the connection's credit; fills convert that value to spent credit; kills/cancels restore headroom |
 | Open-order slots | The count of working orders per connection is capped; completions free slots |
 | Day-so-far reconstruction | At start-of-day, consumption is rebuilt from clearing data, so overnight fills constrain the new session's headroom |
-| Exact-limit behavior | An order that exactly consumes remaining headroom is allowed; anything beyond is rejected — no rounding in the member's favor |
-| Replay safety | A duplicated lifecycle event may release only what was consumed — headroom can never grow beyond its true value |
+| Exact-limit behavior | An order that exactly consumes remaining headroom is allowed; anything beyond is rejected - no rounding in the member's favor |
+| Replay safety | A duplicated lifecycle event may release only what was consumed - headroom can never grow beyond its true value |
 | Unconfigured scope | No bucket, no admission: an order against a connection or currency with no configured limit is rejected |
 
 ### Rate guards
@@ -109,7 +109,7 @@
 |---|---|
 | Runtime limit changes | Limits are defined per scope (connection / trader / customer / account), currency, and bucket; changes take effect without restarting the service |
 | Enable/disable | A disabled limit stops being evaluated; a re-enabled one resumes as configured |
-| Preservation on update | Raising or lowering a limit preserves already-consumed value — updating a limit never refunds usage |
+| Preservation on update | Raising or lowering a limit preserves already-consumed value - updating a limit never refunds usage |
 | Exposure visibility | Admin pages expose the limit definitions and the live reservation trail for operations review |
 
 ### Events & surfaces
@@ -132,7 +132,7 @@ Emitted via the platform event vocabulary
 | Exposure snapshot (`risk.exposure`, realtime MemBus publication) | After each decision cycle affecting exposure; each snapshot fully supersedes the last |
 | Guard events | A connection's rate bucket or limit bucket trips (throttle/limit exceeded recorded with the reject code) |
 
-Inbound (consumed): instrument/reference-data state updates, market phase — ME trade/kill lifecycle events arrive over a live Bus stream subscription (no polling delay; missed events recovered by redelivery)
+Inbound (consumed): instrument/reference-data state updates, market phase - ME trade/kill lifecycle events arrive over a live Bus stream subscription (no polling delay; missed events recovered by redelivery)
 changes, customer/connection state and limit entitlement changes, Shield
 policy-set updates, and start-of-day consumption seeds from clearing.
 
@@ -142,7 +142,7 @@ policy-set updates, and start-of-day consumption seeds from clearing.
    before matching is possible; there is no path from a member to the
    matching core that bypasses this gate.
 2. **Fail closed, everywhere.** Unknown instrument, unknown connection,
-   unconfigured limit scope, stale state, service unavailability — every
+   unconfigured limit scope, stale state, service unavailability - every
    unknown rejects; no condition silently admits an order.
 3. **First failure wins, with the exact catalog code.** Checks run in a
    fixed order and the first failure determines the rejection reason;
@@ -155,7 +155,7 @@ policy-set updates, and start-of-day consumption seeds from clearing.
 5. **Exact consumption is allowed.** An order consuming the last unit of
    available headroom is admitted; the next unit is rejected.
 6. **Replay cannot create credit.** Repeated release events are
-   idempotent — headroom never grows beyond its true day-so-far value.
+   idempotent - headroom never grows beyond its true day-so-far value.
 7. **No limit configured means no admission.** Limits must exist for a
    scope before flow is accepted against it.
 8. **Throttling protects the venue.** Rate exhaustion rejects immediately
@@ -179,7 +179,7 @@ policy-set updates, and start-of-day consumption seeds from clearing.
     platform audit archival; an outage delays delivery but never loses a
     record.
 14. **Every decision is deterministic.** The same order against the same
-    state yields the same decision and reason — reproducible under audit
+    state yields the same decision and reason - reproducible under audit
     or dispute.
 
 ## 6. Target-User Roles & Use Cases
@@ -200,7 +200,7 @@ policy-set updates, and start-of-day consumption seeds from clearing.
 - **Decision latency**: synchronous authorization completes well inside
   the 5-millisecond envelope (P99), so the gate adds no perceptible
   round-trip latency to order entry.
-- **Admission correctness**: zero known false allows — no order admitted
+- **Admission correctness**: zero known false allows - no order admitted
   against a halted instrument, exhausted credit, unconfigured scope, or
   expired rate allowance (CI-enforced per-check tests).
 - **Reject fidelity**: every rejection returns the exact published catalog
@@ -221,34 +221,34 @@ policy-set updates, and start-of-day consumption seeds from clearing.
 
 ## 8. Dependencies & Reliance
 
-- **Exchange8:Gateway** — the only order-admission caller; it owns sessions,
+- **Exchange8:Gateway** - the only order-admission caller; it owns sessions,
   protocol translation, shape validation, and the fail-closed behavior on
   risk unavailability.
-- **Exchange8:RefData** — instrument configuration needed by the matrix
+- **Exchange8:RefData** - instrument configuration needed by the matrix
   (status, tick regime, lot size, shortable cell, LIS thresholds,
   capacities, TIFs); consumed as snapshot events, never joined from SQL.
-- **Exchange8:Clearing** — day-so-far consumption truth for start-of-day
+- **Exchange8:Clearing** - day-so-far consumption truth for start-of-day
   seeding (fills and working orders from the prior session).
-- **Exchange8:Margin** — prospective supplier of margin requirements for
+- **Exchange8:Margin** - prospective supplier of margin requirements for
   derivative instruments' pre-trade checks (this service never computes
   margin itself).
-- **Exchange8:ME / Exchange8:OMS / Exchange8:SOR** — lifecycle events (fills, kills,
+- **Exchange8:ME / Exchange8:OMS / Exchange8:SOR** - lifecycle events (fills, kills,
   completions) that release or convert reservations.
-- **Sentin8:Auth** — all identity issuance/verification; M2M workloads
+- **Sentin8:Auth** - all identity issuance/verification; M2M workloads
   (`exchange8:risk`/`risk`, `risk-audit`, `exchange8-risk-tls`),
   cert-bound by default.
-- **Shield (Sentin8:Policy)** — the only authorization gate; the seeded
+- **Shield (Sentin8:Policy)** - the only authorization gate; the seeded
   scope-mirror set is the service's declared contract; the admin surface
   shares the engine cache.
-- **Sentin8:Bus / Sentin8:MemBus** — durable change delivery (outbox
+- **Sentin8:Bus / Sentin8:MemBus** - durable change delivery (outbox
   relay) and realtime exposure publication; publication degrades without
   blocking the gate.
-- **Sentin8:Sys** — audit ingest (`POST /v1/audit`) and the TLS hostname
+- **Sentin8:Sys** - audit ingest (`POST /v1/audit`) and the TLS hostname
   resolution owner API.
-- **Sentin8:DB (PostgreSQL 18, db `exchange8`, schema `risk`)** — limit
+- **Sentin8:DB (PostgreSQL 18, db `exchange8`, schema `risk`)** - limit
   definitions, reservation trail, outbox, audit journal; accessed only
   via the service's own role under row-level security.
-- **Platform shell (`sentin8::shell`)** — registration, pool, health,
+- **Platform shell (`sentin8::shell`)** - registration, pool, health,
   drain, allocator; `sentin8-tls` for in-process post-quantum TLS.
 
 ## 9. Acceptance Criteria
@@ -272,7 +272,7 @@ policy-set updates, and start-of-day consumption seeds from clearing.
 6. A connection with an exhausted rate bucket receives prompt
    rate-limiting rejections; tokens refill at the configured sustained
    rate and the burst cap is never exceeded.
-7. An order against a scope with no configured limit is rejected — never
+7. An order against a scope with no configured limit is rejected - never
    admitted by default.
 8. Start-of-day load rebuilds consumption from clearing data so prior
    fills constrain the new session from the first order.
@@ -292,7 +292,7 @@ policy-set updates, and start-of-day consumption seeds from clearing.
 13. Rolling instance upgrades complete with graceful drain; no in-flight
     authorization is truncated and no registry entry goes stale.
 14. Risk-service unavailability manifests only as fail-closed rejections
-    upstream — there is no degradation path that admits unexamined orders.
+    upstream - there is no degradation path that admits unexamined orders.
 
 ## 10. Open Business Questions
 
@@ -308,7 +308,7 @@ policy-set updates, and start-of-day consumption seeds from clearing.
   member-facing rulebook.
 - Whether per-trader and per-account scoped limits (supported by the
   limit schema) will be enabled for all participant classes or only
-  institutional members — an onboarding policy decision.
+  institutional members - an onboarding policy decision.
 - Options pre-trade checks consulting margin requirements (derivatives
   extension): the business rule set and the requirement-freshness
   tolerance for a synchronous gate are pending the derivatives design.

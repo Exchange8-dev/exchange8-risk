@@ -7,9 +7,9 @@
 //!
 //! - **Capitalization/credit buckets** (DESIGN.md §3/§7): notional reservation tracking
 //!   (submit reserves qty×price; fill converts reservation to spent credit;
-//!   kill releases), open-order counters, and message-rate token buckets —
+//!   kill releases), open-order counters, and message-rate token buckets -
 //!   the mutable companions to `ClientState`'s static limits.
-//! - **Cache lifecycle**: the snapshot swap contract — build a new
+//! - **Cache lifecycle**: the snapshot swap contract - build a new
 //!   new `EnvState` from SOD load, swap atomically, and event-driven
 //!   partial refreshes (customer/limit changes re-project into a fresh
 //!   snapshot; readers never see torn state).
@@ -17,7 +17,7 @@
 //!   the shell mounts at `POST /v1/authorize` / `POST /v1/release` + admin
 //!   limits CRUD (DESIGN.md §4).
 //!
-//! Design: `design/sentin8-exchange8-risk-technical-design.md` §4–§6.
+//! Design: `design/sentin8-exchange8-risk-technical-design.md` §4-§6.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -63,19 +63,19 @@ impl ClientLedger {
     }
 }
 
-/// The limits ledger (DESIGN.md §3) — mutable state the shell holds
+/// The limits ledger (DESIGN.md §3) - mutable state the shell holds
 /// *beside* the immutable `EnvState` snapshot.
 pub struct LimitsLedger {
     clients: HashMap<u16, ClientLedger>,
     /// Per-order reserved-notional register: the release/consume side of
     /// the event consumer reads it (the ME lifecycle payload carries no
-    /// price history — the ledger tracked the booking; saturation makes a
+    /// price history - the ledger tracked the booking; saturation makes a
     /// re-delivered event safe). Single-owner: touched only from the task
     /// that owns the ledger.
     order_notional_by_order: HashMap<u64, u128>,
     /// Rate-bucket profiles per connection (`message_rate` limit rows):
     /// the (capacity, per-second) pairs. Rows are the ONLY rate source
-    /// (design §5.3); a connection without one is unconfigured — the
+    /// (design §5.3); a connection without one is unconfigured - the
     /// caller's reserve fails closed on it (invariant 3).
     rate_profiles: HashMap<u16, (u32, u32)>,
 }
@@ -110,7 +110,7 @@ impl LimitsLedger {
     }
 
     /// Full pre-check + reserve for one submission: authorize (21 checks)
-    /// then the credit buckets (DESIGN.md §2) — rate permit, open-order
+    /// then the credit buckets (DESIGN.md §2) - rate permit, open-order
     /// slot, notional reservation. The caller supplies the snapshot +
     /// bucket config.
     pub fn reserve(
@@ -192,20 +192,20 @@ impl LimitsLedger {
 
     /// Configure the `message_rate` bucket for one connection (the loader
     /// applies the row's `capacity/per_second` encoding; a re-set replaces
-    /// the profile — the ledger re-reads it on the next reserve).
+    /// the profile - the ledger re-reads it on the next reserve).
     pub fn set_rate_profile(&mut self, connection_id: u16, capacity: u32, per_second: u32) {
         self.rate_profiles
             .insert(connection_id, (capacity, per_second));
     }
 
-    /// The connection's rate profile (`None` = unconfigured — the caller
+    /// The connection's rate profile (`None` = unconfigured - the caller
     /// fails closed on `message_rate` absence, invariant 3).
     pub fn rate_profile(&self, connection_id: u16) -> Option<(u32, u32)> {
         self.rate_profiles.get(&connection_id).copied()
     }
 
     /// Every connection with ledger state (the exposure snapshot projects
-    /// from it — sorted ascending by connection id for stable publishes).
+    /// from it - sorted ascending by connection id for stable publishes).
     pub fn clients(&self) -> Vec<(u16, ClientLedger)> {
         let mut v: Vec<(u16, ClientLedger)> =
             self.clients.iter().map(|(k, v)| (*k, v.clone())).collect();
@@ -214,7 +214,7 @@ impl LimitsLedger {
     }
 
     /// Reserve for one order against the LOADED limit rows (the runtime
-    /// pass — not the test-config `(capacity, rate)` tuple variant): rate
+    /// pass - not the test-config `(capacity, rate)` tuple variant): rate
     /// profile first (unconfigured → deny), then the static matrix, then
     /// the open-order slot, then the notional reservation; the booked
     /// notional registers per order for the release/consume side.
@@ -248,7 +248,7 @@ impl LimitsLedger {
         })
     }
 
-    /// Release one order's reservation (the consumer's kill path) —
+    /// Release one order's reservation (the consumer's kill path) -
     /// saturating; a re-delivered release is a no-op (the register is
     /// removed on the first release).
     pub fn release_order(&mut self, connection_id: u16, order_id: u64) {
@@ -306,14 +306,14 @@ pub struct ReservationTrail {
     pub order_id: u64,
     /// Gateway session (attribution mirror of the envelope payload).
     pub connection_id: u16,
-    /// Trail scope kind (`connection` — the ledger buckets by connection;
+    /// Trail scope kind (`connection` - the ledger buckets by connection;
     /// customer/account depth is the limits-depth epic's row vocabulary).
     pub scope_type: &'static str,
     /// Scope identifier (the connection id's text form).
     pub scope_id: String,
     /// Settlement currency the reservations are denominated in.
     pub currency: String,
-    /// The reservation's touched buckets (`notional` — the ledger's
+    /// The reservation's touched buckets (`notional` - the ledger's
     /// enforced kinds; open-order slots are counts, no trail rows).
     pub buckets: Vec<&'static str>,
     /// The reserved notional.
@@ -322,7 +322,7 @@ pub struct ReservationTrail {
 
 impl ReservationTrail {
     /// The payload-complete event snapshot (the wire `order_id` /
-    /// `connection_id` / bucket + value — the consumer reacts without a
+    /// `connection_id` / bucket + value - the consumer reacts without a
     /// read-back).
     pub fn envelope_snapshot(&self) -> serde_json::Value {
         serde_json::json!({
@@ -354,7 +354,7 @@ impl ReservationTrail {
 }
 
 /// Deterministic u32 projection of the security UUID (the engine's
-/// instrument id space; stable across restarts) — the SAME FNV-1a-32 the ME
+/// instrument id space; stable across restarts) - the SAME FNV-1a-32 the ME
 /// shard plane uses (`me::instrument_id_of`), so gateway / risk / ME key
 /// instruments identically.
 pub fn instrument_id_of(security_id: &str) -> u32 {
@@ -367,7 +367,7 @@ pub fn instrument_id_of(security_id: &str) -> u32 {
 }
 
 /// Notional of one order (limit price × qty; market orders estimate via
-/// the caller before calling — the gateway uses the last price).
+/// the caller before calling - the gateway uses the last price).
 fn order_notional(order: &ExchangeOrder) -> u128 {
     order
         .price
@@ -392,7 +392,7 @@ impl RiskCache {
         }
     }
 
-    /// Read the current snapshot (hot path — one Arc clone).
+    /// Read the current snapshot (hot path - one Arc clone).
     pub fn snapshot(&self) -> Arc<EnvState> {
         self.current.clone()
     }

@@ -5,7 +5,7 @@
 
 //! Exchange8:Risk typed event envelopes (DBX producer path).
 //!
-//! - **Vocabulary + envelope builders** — the `exchange8:risk:{resource}:
+//! - **Vocabulary + envelope builders** - the `exchange8:risk:{resource}:
 //!   {operation}` names, the `EventIdentity` block, and the
 //!   `limit_event` / `reservation_event` builders the handler and the
 //!   runtime stage call. The outbox row goes in the SAME transaction as
@@ -13,16 +13,16 @@
 //!   (`insert_outbox_row_with_publisher`); the shell's relay (boot 8b)
 //!   pushes it to Bus `POST /v1/produce`; the audit pusher (8c) drains the
 //!   journal rows the `journal_mutation` helper writes on the same tx.
-//! - **Egress channel** — the synchronous gate never queues behind egress
+//! - **Egress channel** - the synchronous gate never queues behind egress
 //!   (DESIGN.md §7): a decision stages an [`EgressItem`] on a bounded
 //!   channel and returns; the one `spawn_outbox_writer` task batches the
 //!   items (512 events / 5 ms) into the `risk.risk_reservation` trail +
 //!   `risk.outbox` + `risk.audit_journal` rows under one RLS-contexted
 //!   transaction per env group (the ME outbox writer's batching).
 //!
-//! Stream family: `risk` — the Bus stream key is `bus:{env_id}:risk`; the
+//! Stream family: `risk` - the Bus stream key is `bus:{env_id}:risk`; the
 //! family slug is validated by `sentin8::bus::outbox::validate_stream_family`
-//! (colons are structurally impossible in a family — the event NAMES carry
+//! (colons are structurally impossible in a family - the event NAMES carry
 //! them; the gateway/me sibling convention). The MemBus snapshot family is
 //! separate (`risk.exposure`, the runtime module publishes it).
 //!
@@ -32,31 +32,31 @@
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-/// Stream family for all risk-emitted events (bare service slug — the Bus
+/// Stream family for all risk-emitted events (bare service slug - the Bus
 /// `XADD bus:{env}:risk` key; colons are structurally impossible per
 /// `sentin8::bus::outbox::validate_stream_family`).
 pub const STREAM_FAMILY: &str = "risk";
 
-// ── Event vocabulary (DESIGN.md §4 table — colon segments only) ─────────
+// ── Event vocabulary (DESIGN.md §4 table - colon segments only) ─────────
 
-/// `exchange8:risk:limit:created` — a limit definition row was inserted.
+/// `exchange8:risk:limit:created` - a limit definition row was inserted.
 pub const EV_LIMIT_CREATED: &str = "exchange8:risk:limit:created";
-/// `exchange8:risk:limit:updated` — a limit definition row was updated
+/// `exchange8:risk:limit:updated` - a limit definition row was updated
 /// (value or status; the master design §8: every limit change emits this).
 pub const EV_LIMIT_UPDATED: &str = "exchange8:risk:limit:updated";
-/// `exchange8:risk:limit:deleted` — a limit definition row was deleted.
+/// `exchange8:risk:limit:deleted` - a limit definition row was deleted.
 pub const EV_LIMIT_DELETED: &str = "exchange8:risk:limit:deleted";
-/// `exchange8:risk:limit:breached` — a connection's bucket transitioned
+/// `exchange8:risk:limit:breached` - a connection's bucket transitioned
 /// into breach (throttle or limit exceeded; written on the state change,
-/// never per decision — DESIGN.md §4).
+/// never per decision - DESIGN.md §4).
 pub const EV_LIMIT_BREACHED: &str = "exchange8:risk:limit:breached";
-/// `exchange8:risk:reservation:reserved` — an authorized order booked its
+/// `exchange8:risk:reservation:reserved` - an authorized order booked its
 /// notional reservation (same-tx trail row).
 pub const EV_RESERVATION_RESERVED: &str = "exchange8:risk:reservation:reserved";
-/// `exchange8:risk:reservation:released` — a reservation was released
+/// `exchange8:risk:reservation:released` - a reservation was released
 /// (kill / cancel / admin correction; replay-safe release).
 pub const EV_RESERVATION_RELEASED: &str = "exchange8:risk:reservation:released";
-/// `exchange8:risk:reservation:consumed` — a fill converted a reservation
+/// `exchange8:risk:reservation:consumed` - a fill converted a reservation
 /// to spent credit (same-tx trail row state advance).
 pub const EV_RESERVATION_CONSUMED: &str = "exchange8:risk:reservation:consumed";
 
@@ -83,19 +83,19 @@ pub enum ReservationOp {
 }
 
 /// The identity carried inside every envelope (decision/admin owned, never
-/// derived from DB or headers — event-first: consumers react from the
+/// derived from DB or headers - event-first: consumers react from the
 /// payload alone).
-/// The identity block every emitted event carries (DESIGN.md §4 —
+/// The identity block every emitted event carries (DESIGN.md §4 -
 /// payload completeness: consumers dedupe/react from the envelope alone).
 #[derive(Clone, Debug)]
 pub struct EventIdentity {
     /// Tenant environment of the event.
     pub env_id: Uuid,
-    /// Acting subject (the caller's verified `sub` — the gateway workload
+    /// Acting subject (the caller's verified `sub` - the gateway workload
     /// for authorize, the admin user for corrections).
     pub subject_id: String,
     /// Correlation id (`X-Sentin8-Correlation-Id` when present; otherwise
-    /// generated — direct M2M calls).
+    /// generated - direct M2M calls).
     pub correlation_id: String,
     /// Idempotency key: consumers dedupe on this (the reservation events
     /// key on the order id; breach events on the transition itself).
@@ -103,7 +103,7 @@ pub struct EventIdentity {
 }
 
 /// Envelope for a limit-definition mutation: `snapshot` = the FULL
-/// `risk.risk_limit` row (consumers — Clearing's audit mirror, ops — react
+/// `risk.risk_limit` row (consumers - Clearing's audit mirror, ops - react
 /// from the payload alone).
 pub fn limit_event(op: LimitOp, limit_row: &Value, identity: &EventIdentity) -> Value {
     let event_type = match op {
@@ -122,7 +122,7 @@ pub fn limit_event(op: LimitOp, limit_row: &Value, identity: &EventIdentity) -> 
 }
 
 /// Envelope for a reservation transition: the order identity + the bucket
-/// the reservation carries, the notional value, and the trail state — the
+/// the reservation carries, the notional value, and the trail state - the
 /// consumer (Clearing's day-bucket mirror / Surveillance) reacts from the
 /// payload alone.
 pub fn reservation_event(
@@ -146,14 +146,14 @@ pub fn reservation_event(
 }
 
 /// Write the outbox row for an envelope in the CALLER's transaction (same
-/// tx as the domain change — outbox-first). The relay (shell boot step 8b)
+/// tx as the domain change - outbox-first). The relay (shell boot step 8b)
 /// pushes it to Bus post-commit; a failed write aborts the caller's tx via
 /// `?` at the call site. `publisher_subject` carries the acting subject so
 /// consumers can attribute the event.
 ///
 /// # Errors
 /// Propagates the SQL error (the validator's rejection of the constant
-/// family text is structurally impossible — covered by the registry test).
+/// family text is structurally impossible - covered by the registry test).
 pub async fn emit_outbox(
     tx: &mut sqlx::PgConnection,
     identity: &EventIdentity,
@@ -195,7 +195,7 @@ pub enum AuditOp {
 
 /// Build the audit envelope for one mutation and write the
 /// `risk.audit_journal` row on the CALLER's transaction (same tx as the
-/// domain change; the shell's pusher — boot step 8c — drains it to
+/// domain change; the shell's pusher - boot step 8c - drains it to
 /// Sentin8:Sys `POST /v1/audit` with the `risk-audit` M2M workload). Reads
 /// are NOT journalized (audit-journal pattern: state changes only).
 ///
@@ -277,7 +277,7 @@ pub enum EgressItem {
         identity: EventIdentity,
     },
     /// A breach episode ended (headroom returned): one `limit:updated`
-    /// event with the recovered-bucket snapshot (no trail row — the trail
+    /// event with the recovered-bucket snapshot (no trail row - the trail
     /// records reservations, not breach episodes; the audit row carries it).
     Recovered {
         env_id: Uuid,
@@ -289,7 +289,7 @@ pub enum EgressItem {
 
 impl EgressItem {
     /// The env the item attributes to (the writer groups transactions by
-    /// it — the RLS context is transaction-local).
+    /// it - the RLS context is transaction-local).
     pub fn env_id(&self) -> Uuid {
         match self {
             EgressItem::Reserved { env_id, .. }
@@ -313,7 +313,7 @@ impl EgressItem {
 }
 
 /// Writer budget: maximum items per flush (the ME outbox writer's batching
-/// convention; the decision plane's volume is lower — the caps bound tail
+/// convention; the decision plane's volume is lower - the caps bound tail
 /// latency, never the hot path).
 const OUTBOX_BATCH_ITEMS: usize = 512;
 /// Writer budget: maximum tick between flushes.
@@ -322,14 +322,14 @@ const OUTBOX_FLUSH_TICK_MS: u64 = 5;
 /// Spawn the outbox-writer task: batch [`EgressItem`]s into the durable
 /// rows (512 items / 5 ms, whichever first) under one RLS-contexted
 /// transaction per env group. The shell's relay (boot 8b) produces the
-/// outbox rows to Bus — this task only stages them. Called from the
+/// outbox rows to Bus - this task only stages them. Called from the
 /// `with_state` closure (the shell's relay/pushers are already running).
 pub fn spawn_outbox_writer(pool: sqlx::PgPool, mut rx: tokio::sync::mpsc::Receiver<EgressItem>) {
     tokio::spawn(async move {
         loop {
             let mut batch: Vec<EgressItem> = Vec::with_capacity(OUTBOX_BATCH_ITEMS);
             let Some(first) = rx.recv().await else {
-                break; // channel closed — drain done
+                break; // channel closed - drain done
             };
             batch.push(first);
             let deadline = tokio::time::Instant::now()
@@ -338,22 +338,22 @@ pub fn spawn_outbox_writer(pool: sqlx::PgPool, mut rx: tokio::sync::mpsc::Receiv
                 match tokio::time::timeout_at(deadline, rx.recv()).await {
                     Ok(Some(ev)) => batch.push(ev),
                     Ok(None) => break,
-                    Err(_) => break, // tick expired — flush what we have
+                    Err(_) => break, // tick expired - flush what we have
                 }
             }
             if let Err(e) = write_batch(&pool, &batch).await {
                 tracing::error!(
                     error = %e,
                     items = batch.len(),
-                    "risk egress writer: batch write failed — items lost from this pass"
+                    "risk egress writer: batch write failed - items lost from this pass"
                 );
             }
         }
-        tracing::info!("risk egress writer: channel closed — stopped");
+        tracing::info!("risk egress writer: channel closed - stopped");
     });
 }
 
-/// Write one batch: group by env (the RLS context is transaction-local —
+/// Write one batch: group by env (the RLS context is transaction-local -
 /// the ME writer's per-env grouping), then per item commit the trail rows +
 /// outbox envelope + audit row on the item's transaction.
 async fn write_batch(pool: &sqlx::PgPool, batch: &[EgressItem]) -> Result<(), sqlx::Error> {
@@ -391,7 +391,7 @@ async fn write_item(
             order, identity, ..
         } => {
             // One trail row per touched bucket (the reservation's value
-            // books once per bucket; the open-order slot is a count — no
+            // books once per bucket; the open-order slot is a count - no
             // trail row).
             for bucket in &order.buckets {
                 sqlx::query(
@@ -511,7 +511,7 @@ async fn write_item(
             ..
         } => {
             // State-change record: the breach event + the audit row. No
-            // trail row — the trail records reservations (DESIGN.md §3).
+            // trail row - the trail records reservations (DESIGN.md §3).
             let envelope = envelope_from(bucket, breach, identity, EV_LIMIT_BREACHED);
             emit_outbox(&mut tx, identity, &envelope).await?;
             journal_mutation(
@@ -595,7 +595,7 @@ mod tests {
 
     /// Registry test (DESIGN.md §9): every declared event name uses the
     /// platform event format (`vertical:service:resource:operation`, all
-    /// colons — no dots) and the stream family validates.
+    /// colons - no dots) and the stream family validates.
     #[test]
     fn event_names_follow_the_colon_format_and_family_validates() {
         for n in EXPECTED {

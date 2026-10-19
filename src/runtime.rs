@@ -3,23 +3,23 @@
 // SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:Risk
 // SPDX-License-Identifier: Apache-2.0
 
-//! Exchange8:Risk runtime wiring — the projection plane, the egress stage, and
+//! Exchange8:Risk runtime wiring - the projection plane, the egress stage, and
 //! the inbound consumer (DESIGN.md §2/§4/§7).
 //!
-//! - **Snapshot projection** — [`load_snapshot`] projects the reference
+//! - **Snapshot projection** - [`load_snapshot`] projects the reference
 //!   surface into a complete `EnvState` and [`load_limits`] projects the
 //!   limit definitions into the ledger: the SOD loader the boot runs
-//!   (awaited inline — the gate never serves against an empty snapshot;
+//!   (awaited inline - the gate never serves against an empty snapshot;
 //!   DESIGN.md §6 refuse-to-become-Active).
-//! - **Limits loader** — [`LimitsLoader::load`] reads `risk.risk_limit`
+//! - **Limits loader** - [`LimitsLoader::load`] reads `risk.risk_limit`
 //!   rows + the SOD day-so-far seed and feeds the ledger's in-memory
 //!   buckets, preserving already-consumed value (§6 rebuild semantics).
-//! - **Breach tracker** — [`BreachTracker`]: the state-change rule behind
-//!   `exchange8:risk:limit:breached` — a (connection, bucket) episode
+//! - **Breach tracker** - [`BreachTracker`]: the state-change rule behind
+//!   `exchange8:risk:limit:breached` - a (connection, bucket) episode
 //!   emits at the transition, never per decision.
-//! - **Exposure publisher** — [`publish_exposure`]: the MemBus
+//! - **Exposure publisher** - [`publish_exposure`]: the MemBus
 //!   `risk.exposure` snapshot (newest-wins, pub/sub class, fail-soft).
-//! - **Consumer loop** — [`spawn_consumer`]: one Bus consumer task over
+//! - **Consumer loop** - [`spawn_consumer`]: one Bus consumer task over
 //!   the vertical's `exchange8` stream family (the OMS quote-consumer
 //!   convention: certificate-presenting Bus client + batched `POST
 //!   /v1/consume` + ack),
@@ -30,7 +30,7 @@
 //! holds no HTTP code.
 //!
 //! Design: `services/risk/DESIGN.md` §2 (runtime architecture), §7 (task
-//! topology), §10 (consumer + SOD wiring — cleared here).
+//! topology), §10 (consumer + SOD wiring - cleared here).
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -50,7 +50,7 @@ use crate::events::{EgressItem, EventIdentity};
 // Boot planes + env resolution
 // ---------------------------------------------------------------------------
 
-/// Resolve the tenant env id the planes attribute to — the same chain
+/// Resolve the tenant env id the planes attribute to - the same chain
 /// MemBus uses (`{SERVICE_SLUG}_ENV_ID` → `SENTIN8_ENV_ID` → system env)
 /// so the events and the MemBus publishes share one tenant identity.
 pub fn resolve_env_id(service_name: &str) -> Uuid {
@@ -61,20 +61,20 @@ pub fn resolve_env_id(service_name: &str) -> Uuid {
     Uuid::parse_str(&raw).unwrap_or(sentin8::config::SYSTEM_ENV_ID)
 }
 
-/// Spawn the runtime planes (called from the `with_state` closure — the
+/// Spawn the runtime planes (called from the `with_state` closure - the
 /// shell's relay/pushers are already running): the egress writer (one
 /// task, batched trail+outbox+audit writes), the inbound lifecycle
 /// consumer (the ledger's release/consume side), and the MemBus exposure
 /// publisher (tick cadence, fail-soft).
 pub fn spawn_planes(state: std::sync::Arc<crate::RiskState>, env_id: Uuid) {
     // Egress channel + writer task (bounded; the decision plane's
-    // `stage_egress` never awaits — DESIGN.md §7).
+    // `stage_egress` never awaits - DESIGN.md §7).
     let (tx, rx) = tokio::sync::mpsc::channel::<EgressItem>(4_096);
     let _ = EGRESS_TX.set(tx);
     crate::events::spawn_outbox_writer(state.core.pool.clone(), rx);
     // The inbound lifecycle consumer (Bus; the SOD fill rides it).
     spawn_consumer(state.clone(), env_id);
-    // The exposure publisher — periodic MemBus tick (fail-soft).
+    // The exposure publisher - periodic MemBus tick (fail-soft).
     tokio::spawn(async move {
         let mut tick = tokio::time::interval(std::time::Duration::from_millis(1_000));
         loop {
@@ -89,7 +89,7 @@ pub fn spawn_planes(state: std::sync::Arc<crate::RiskState>, env_id: Uuid) {
 // ---------------------------------------------------------------------------
 
 /// The reference-data row shape the SOD projection reads (the declared
-/// cross-schema read: `refdata.security` SELECT — the registration's
+/// cross-schema read: `refdata.security` SELECT - the registration's
 /// `cross_schema_grants`).
 struct SecRow {
     id: Uuid,
@@ -105,7 +105,7 @@ struct SecRow {
 
 /// Project the reference surface (refdata securities + tick bands) into the
 /// `EnvState` instruments. Deterministic u32 projection of the security
-/// UUID — the same FNV-1a-32 the ME shard plane uses (`me::instrument_id_of`,
+/// UUID - the same FNV-1a-32 the ME shard plane uses (`me::instrument_id_of`,
 /// ME-8 registry pass), so an order the gateway authorizes keys the same
 /// instrument on both sides.
 ///
@@ -115,14 +115,14 @@ pub async fn load_snapshot(pool: &sqlx::PgPool, env_id: Uuid) -> EnvState {
     let mut env = EnvState::default();
 
     let Ok(mut ctx) = pool.begin().await else {
-        tracing::warn!("risk SOD: pool begin failed — empty snapshot (fail-closed gate)");
+        tracing::warn!("risk SOD: pool begin failed - empty snapshot (fail-closed gate)");
         return env;
     };
     sentin8::shell::set_tenant_context(&mut ctx, env_id).await;
 
     // Tick bands per rule: the band values arrive as NUMERIC(18,4) text
     // and project to the consumer's price_scale (bands store decimal
-    // price levels, not raw ticks — `on_tick` compares raw-tick modulo,
+    // price levels, not raw ticks - `on_tick` compares raw-tick modulo,
     // so the projection multiplies by 10^price_scale).
     let mut bands: std::collections::HashMap<Uuid, Vec<(i128, i128)>> =
         std::collections::HashMap::new();
@@ -146,7 +146,7 @@ pub async fn load_snapshot(pool: &sqlx::PgPool, env_id: Uuid) -> EnvState {
 
     // Holidays: markets closed today (declared cross-schema read:
     // refdata.holiday + holiday_market). The per-env holiday calendar is
-    // the projection's own read — the owning service's tables stay
+    // the projection's own read - the owning service's tables stay
     // read-only from here.
     let today = sqlx::types::chrono::Utc::now().date_naive();
     let holiday_markets: HashSet<Uuid> = sqlx::query_as::<_, (Uuid,)>(
@@ -200,7 +200,7 @@ pub async fn load_snapshot(pool: &sqlx::PgPool, env_id: Uuid) -> EnvState {
         let lot_size = Qty::from_scaled(100, qty_scale.max(0) as u8);
         let inst = InstrumentState {
             instrument: InstrumentRef {
-                // Deterministic u32 identity — the ME shard plane's
+                // Deterministic u32 identity - the ME shard plane's
                 // projection (ME-8); the u16 id the FIX/OUCH wire carries
                 // widens into the same value.
                 id: crate::limits::instrument_id_of(&id.to_string()),
@@ -254,7 +254,7 @@ struct SecShape {
     market_id: Option<Uuid>,
 }
 
-/// The wide security read (tick rule + LIS + market) — one scan feeding the
+/// The wide security read (tick rule + LIS + market) - one scan feeding the
 /// projection loop above.
 async fn sec_shapes(
     ctx: &mut sqlx::Transaction<'static, sqlx::Postgres>,
@@ -324,13 +324,13 @@ impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for SecRowWide {
 }
 
 /// The `SecRow` (narrow) shape's unused legacy mapping (kept only for the
-/// early draft query — the wide shape is authoritative; removing the narrow
+/// early draft query - the wide shape is authoritative; removing the narrow
 /// type would leave the module doc stale).
 #[allow(dead_code)]
 fn narrow_unused(_r: SecRow) {}
 
 /// The connection→limit projection input (the gateway's session registry
-/// rows, projected through the gateway's OWN DSN — the gateway connection
+/// rows, projected through the gateway's OWN DSN - the gateway connection
 /// table is Exchange8:Gateway-owned and this service never joins it directly;
 /// the SOD gate boot reads the snapshot the GATEWAY passes inside the
 /// authorize request's `connection_id`, so the ClientState ledger below
@@ -354,7 +354,7 @@ pub struct ClientSeed {
     pub notional_limit: Option<u128>,
     /// Open-order count limit.
     pub open_orders_limit: Option<u64>,
-    /// Rate bucket config (capacity, per-second) — from the
+    /// Rate bucket config (capacity, per-second) - from the
     /// `message_rate` limit row; `None` = unconfigured → deny (the ledger
     /// reserves against a configured bucket only).
     pub rate: Option<(u32, u32)>,
@@ -441,11 +441,11 @@ fn parse_rate_pair(s: &str) -> Option<(f64, f64)> {
 }
 
 // ---------------------------------------------------------------------------
-// Breach tracker (exchange8:risk:limit:breached — the state-change rule)
+// Breach tracker (exchange8:risk:limit:breached - the state-change rule)
 // ---------------------------------------------------------------------------
 
 /// Tracks breach *episodes* per (connection, bucket): a breach emits at the
-/// transition into the state, the recovery at the transition out — never
+/// transition into the state, the recovery at the transition out - never
 /// per decision (the hot path writes no outbox rows at all; the egress
 /// item rides the writer task, DESIGN.md §7).
 #[derive(Default)]
@@ -518,14 +518,14 @@ impl BreachTracker {
 }
 
 // ---------------------------------------------------------------------------
-// Exposure publication (MemBus `risk.exposure` — DESIGN.md §4/§7)
+// Exposure publication (MemBus `risk.exposure` - DESIGN.md §4/§7)
 // ---------------------------------------------------------------------------
 
 /// The exposure snapshot envelope: per-connection reserved + spent notional
 /// (per currency), the ledger's day-so-far state. Each snapshot fully
-/// supersedes the last (newest-wins pub/sub) — the consumers re-key from
+/// supersedes the last (newest-wins pub/sub) - the consumers re-key from
 /// the payload alone. The publish is fail-soft (a disabled/absent Valkey is
-/// a silent no-op — the gate never depends on it).
+/// a silent no-op - the gate never depends on it).
 pub fn exposure_snapshot(state: &crate::RiskState) -> serde_json::Value {
     let ledger = state.ledger.lock().unwrap();
     let mut rows: Vec<serde_json::Value> = ledger
@@ -551,7 +551,7 @@ pub fn exposure_snapshot(state: &crate::RiskState) -> serde_json::Value {
 }
 
 /// Publish the exposure snapshot (fail-soft). Called after each
-/// state-changing decision / release pass — the newest-wins contract means
+/// state-changing decision / release pass - the newest-wins contract means
 /// consumers only ever need the latest.
 pub async fn publish_exposure(state: &crate::RiskState) {
     let snapshot = exposure_snapshot(state);
@@ -565,7 +565,7 @@ pub async fn publish_exposure(state: &crate::RiskState) {
         .await;
 }
 
-/// The MemBus publish family (DOTTED — the MemBus family validator's
+/// The MemBus publish family (DOTTED - the MemBus family validator's
 /// vocabulary, matching `me.exec`; the Bus outbox family is the separate
 /// `risk` slug).
 pub const EXPOSURE_FAMILY: &str = "risk.exposure";
@@ -575,9 +575,9 @@ pub const EXPOSURE_FAMILY: &str = "risk.exposure";
 // ---------------------------------------------------------------------------
 
 /// The consumed stream family (the Bus stream key is `bus:{env}:exchange8`
-/// — the bare vertical slug every vertical producer publishes into).
+/// - the bare vertical slug every vertical producer publishes into).
 pub const CONSUME_STREAM_FAMILY: &str = "exchange8";
-/// The consumer group (fan-out across instances rides it — the OMS
+/// The consumer group (fan-out across instances rides it - the OMS
 /// quote-consumer convention).
 pub const CONSUMER_GROUP: &str = "exchange8-risk-lifecycle";
 
@@ -585,14 +585,14 @@ pub const CONSUMER_GROUP: &str = "exchange8-risk-lifecycle";
 /// decoding the ME lifecycle payloads (`exchange8:me:trade:executed`,
 /// `exchange8:me:order:killed`) and driving the ledger's release/consume
 /// side. This loop also fills the SOD projection: from boot, the
-/// day-so-far state streams in — a re-delivered event is a no-op
+/// day-so-far state streams in - a re-delivered event is a no-op
 /// (saturating release/consume; the reservation trail's state predicates
 /// dedupe). A Bus outage idles the loop (the in-memory ledger keeps
 /// serving; the SOD seed re-runs on the next boot).
 ///
 /// CLEARING SEAM (DESIGN.md §10): Clearing does not yet publish a
 /// day-bucket read endpoint (clearing.trade has rows, but no SOD view).
-/// This consumer implements the declared event-based fill instead —
+/// This consumer implements the declared event-based fill instead -
 /// consuming Clearing's *upstream* truth (the ME trade events Clearing
 /// itself consumes) from boot, so the ledger's day-so-far consumption
 /// converges to the same day-bucket state. When Clearing lands its
@@ -600,7 +600,7 @@ pub const CONSUMER_GROUP: &str = "exchange8-risk-lifecycle";
 pub fn spawn_consumer(state: Arc<crate::RiskState>, env_id: Uuid) {
     tokio::spawn(async move {
         // Cert-presenting Bus client (CERTFREE-4V): the `exchange8:risk`
-        // workload CERTIFICATE is the identity — no DCR, no token; the
+        // workload CERTIFICATE is the identity - no DCR, no token; the
         // mint retries while the fleet boots.
         let bus = loop {
             match sentin8::bus::client::BusClient::for_workload(
@@ -617,7 +617,7 @@ pub fn spawn_consumer(state: Arc<crate::RiskState>, env_id: Uuid) {
                 }
             }
         };
-        // BUSCONNP-1: the SSE direct-consumer pattern — one long-lived
+        // BUSCONNP-1: the SSE direct-consumer pattern - one long-lived
         // `GET /v1/consume/sse` connection per epoch, per-message acks.
         // The bus holds the blocking read server-side; this loop never
         // issues short-interval `POST /v1/consume` blocking polls.
@@ -641,7 +641,7 @@ pub fn spawn_consumer(state: Arc<crate::RiskState>, env_id: Uuid) {
             if let Err(e) = lifecycle_sse_loop(&state, &bus, resp.bytes_stream(), env_id).await {
                 tracing::warn!(error = %e, "risk: lifecycle SSE loop exited");
             }
-            tracing::info!("risk: lifecycle SSE disconnected — reconnecting");
+            tracing::info!("risk: lifecycle SSE disconnected - reconnecting");
         }
     });
 }
@@ -649,7 +649,7 @@ pub fn spawn_consumer(state: Arc<crate::RiskState>, env_id: Uuid) {
 /// Process the lifecycle SSE stream until it drops: decode each ME
 /// event, drive the ledger's release/consume side, stage the egress, and
 /// ack. Unknown events are acked and skipped (the family carries other
-/// vertical producers' events — only ME lifecycle vocabulary acts here).
+/// vertical producers' events - only ME lifecycle vocabulary acts here).
 async fn lifecycle_sse_loop<T, E>(
     state: &Arc<crate::RiskState>,
     bus: &sentin8::bus::client::BusClient,
@@ -700,7 +700,7 @@ where
             for item in egress {
                 let env = item.env_id();
                 if crate::runtime::stage_egress(state, item, env).is_err() {
-                    tracing::warn!("risk consumer: egress channel saturated — item dropped");
+                    tracing::warn!("risk consumer: egress channel saturated - item dropped");
                 }
             }
             let _ = bus
@@ -711,7 +711,7 @@ where
     Ok(())
 }
 
-/// The consumed trade event (the ME vocabulary — the master design §7.1).
+/// The consumed trade event (the ME vocabulary - the master design §7.1).
 pub const EV_CONSUME_TRADE_EXECUTED: &str = "exchange8:me:trade:executed";
 /// The consumed kill event.
 pub const EV_CONSUME_ORDER_KILLED: &str = "exchange8:me:order:killed";
@@ -726,7 +726,7 @@ fn apply_executed(
     message_id: &str,
 ) -> Vec<EgressItem> {
     // Re-derive the notional from the execution's price/qty (checked):
-    // a conversion the ledger cannot represent is a data anomaly — the
+    // a conversion the ledger cannot represent is a data anomaly - the
     // event is acked and the anomaly logged, never applied.
     let notional = p.price.checked_notional(p.qty);
     let identity = EventIdentity {
@@ -770,11 +770,11 @@ fn apply_killed(
     {
         // Saturation: the reservation's stored notional is what the
         // release frees (the order's own re-priced value rides the same
-        // key the reserve booked — the event payload doesn't carry price
+        // key the reserve booked - the event payload doesn't carry price
         // history; the ledger tracked it).
         // TODO(seam): the ledger's per-order notional map is the follow-up
         // to the day-bucket loader (a re-delivered kill releases only the
-        // ledger's current view — at-least-once + saturation = safe).
+        // ledger's current view - at-least-once + saturation = safe).
         let mut ledger = state.ledger.lock().unwrap();
         ledger.release_order(p.connection_id, p.order_id);
     }
@@ -791,12 +791,12 @@ fn apply_killed(
 // Egress staging (the single writer's channel)
 // ---------------------------------------------------------------------------
 
-/// The egress channel (set once at boot — the writers and the handlers share
+/// The egress channel (set once at boot - the writers and the handlers share
 /// it). Bounded: the decision plane stages without awaiting.
 pub static EGRESS_TX: std::sync::OnceLock<tokio::sync::mpsc::Sender<EgressItem>> =
     std::sync::OnceLock::new();
 
-/// Stage one egress item (the decision plane's only egress work — a
+/// Stage one egress item (the decision plane's only egress work - a
 /// `try_send`, never an await on the hot path). `Err` = channel saturated
 /// (backpressure made visible: the durable trail write is the item's
 /// record; a dropped stage is re-recorded by the next state change on the
@@ -808,6 +808,6 @@ pub fn stage_egress(
 ) -> Result<(), tokio::sync::mpsc::error::TrySendError<EgressItem>> {
     match EGRESS_TX.get() {
         Some(tx) => tx.try_send(item),
-        None => Ok(()), // writers not booted (tests) — drop silently
+        None => Ok(()), // writers not booted (tests) - drop silently
     }
 }

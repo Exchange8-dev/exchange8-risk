@@ -48,11 +48,11 @@ pub enum MarketPhase {
 /// Shortable matrix cell (the platform spec Y/E/N).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Shortable {
-    /// Y — short freely.
+    /// Y - short freely.
     Yes,
-    /// E — exempt-marked shorts only (`ShortMarkingExempt`).
+    /// E - exempt-marked shorts only (`ShortMarkingExempt`).
     ExemptOnly,
-    /// N — no shorts.
+    /// N - no shorts.
     No,
 }
 
@@ -87,7 +87,7 @@ pub struct InstrumentState {
 /// Connection + customer + limits snapshot (customer:state / limits:updated).
 ///
 /// `connection_id`/`customer_id` anchor the audit record; `open_orders*`
-/// feed check 20's counter bucket — the full buckets (notional reservations,
+/// feed check 20's counter bucket - the full buckets (notional reservations,
 /// open-order count, rate) are consumed by the shell's reserve/release paths.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
@@ -294,7 +294,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
             return Decision::Reject(Malformed);
         }
         if order.tif == Tif::Fok && order.stp_key.is_some() {
-            // FOK disables STP — reject the shape rather than silently
+            // FOK disables STP - reject the shape rather than silently
             // dropping the attribute (mpid=0 semantics).
             return Decision::Reject(WrongExecInst);
         }
@@ -624,7 +624,7 @@ mod tests {
     #[test]
     fn check8_off_tick() {
         let mut o = order_defaults();
-        // 1.0001 — one past the 100-tick grid (0.01).
+        // 1.0001 - one past the 100-tick grid (0.01).
         o.price = Some(Price::equity(10_001));
         let d = authorize(&o, &env_ready());
         assert_eq!(d, Decision::Reject(RejectCode::MismatchPriceTicksize));

@@ -12,7 +12,7 @@
 //!   connection × currency, rebuilt at SOD from Clearing day-so-far queries;
 //!   the persistent audit trail is `risk.risk_reservation` (schema done).
 //!
-//! Design: `design/sentin8-exchange8-risk-technical-design.md` §5.2–5.3.
+//! Design: `design/sentin8-exchange8-risk-technical-design.md` §5.2-5.3.
 
 /// Token-bucket rate guard for one connection.
 ///

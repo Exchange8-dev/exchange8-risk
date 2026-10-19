@@ -3,7 +3,7 @@
 -- SPDX-FileCopyrightText: Copyright Contributors to the Exchange8:Risk
 -- SPDX-License-Identifier: Apache-2.0
 
--- Ex8:Risk — pre-trade risk limits and reservation ledger.
+-- Ex8:Risk - pre-trade risk limits and reservation ledger.
 --
 -- Design: design/sentin8-exchange8-data-model-technical-design.md §3.5 (RISK).
 -- No migration code (new platform): `sentin8-cli vertical init` applies this.
@@ -75,7 +75,7 @@ END $$;
 
 -- ---------------------------------------------------------------------------
 -- Per-service role grants (schema-per-service: this service owns schema
--- `risk`; grants live in db `exchange8` only — design doc §1).
+-- `risk`; grants live in db `exchange8` only - design doc §1).
 -- ---------------------------------------------------------------------------
 DO $$
 BEGIN
@@ -88,7 +88,7 @@ BEGIN
 END $$;
 
 -- ---------------------------------------------------------------------------
--- Local outbox (DBX §6.7 — generated from `sentin8_outbox::outbox_table_sql(
+-- Local outbox (DBX §6.7 - generated from `sentin8_outbox::outbox_table_sql(
 -- "risk")`): rows written in the same DB transaction as the domain change;
 -- the shell's relay (boot step §8b) pushes them to Bus `POST /v1/produce`.
 -- ---------------------------------------------------------------------------
@@ -142,7 +142,7 @@ CREATE TRIGGER outbox_notify_trigger
     EXECUTE FUNCTION risk.risk_notify_outbox();
 
 -- ---------------------------------------------------------------------------
--- Local audit journal (DBX §6.8 — generated from
+-- Local audit journal (DBX §6.8 - generated from
 -- `sentin8_audit::audit_journal_sql("risk")`): rows written in the same
 -- transaction as the domain change; the shell's pusher (boot step §8c) pushes
 -- them to Sys `POST /v1/audit` (`sentin8:sys:audit:write`). A Sys outage
