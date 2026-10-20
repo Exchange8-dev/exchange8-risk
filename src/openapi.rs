@@ -11,8 +11,7 @@
 
 use utoipa::OpenApi;
 
-pub mod w {
-}
+pub mod w {}
 
 /// OpenAPI spec for the risk API.
 #[derive(OpenApi)]

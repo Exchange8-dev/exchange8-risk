@@ -622,10 +622,7 @@ pub fn spawn_consumer(state: Arc<crate::RiskState>, env_id: Uuid) {
         // The bus holds the blocking read server-side; this loop never
         // issues short-interval `POST /v1/consume` blocking polls.
         loop {
-            let resp = match bus
-                .sse_consume(CONSUME_STREAM_FAMILY, CONSUMER_GROUP)
-                .await
-            {
+            let resp = match bus.sse_consume(CONSUME_STREAM_FAMILY, CONSUMER_GROUP).await {
                 Ok(r) => r,
                 Err(e) => {
                     tracing::warn!(error = %e, "risk lifecycle SSE connect failed; retrying");

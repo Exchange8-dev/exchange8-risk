@@ -18,8 +18,8 @@ mod core;
 mod events;
 mod guards;
 mod limits;
-mod registration;
 mod openapi;
+mod registration;
 mod runtime;
 
 use std::sync::Arc;
