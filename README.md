@@ -1,5 +1,8 @@
-# README.md: Exchange8:Risk
-
+# Exchange8:Risk
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](../../LICENSE)
+[![Built with Rust](https://img.shields.io/badge/Built%20with-Rust-orange.svg)](https://www.rust-lang.org/)
+[![Docs](https://img.shields.io/badge/docs/read-3aa757.svg)](https://exchange8.dev/docs/products/risk)
+[![Website](https://img.shields.io/badge/website-exchange8.dev-1a73e8.svg)](https://exchange8.dev)
 ## 1. Summary
 
 Exchange8:Risk (service type `exchange8:risk`, binary `exchange8-risk`) is the
