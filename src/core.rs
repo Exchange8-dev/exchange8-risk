@@ -138,7 +138,7 @@ impl EnvState {
 pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
     use RejectCode::*;
 
-    // --- 1. Session not suspended/halted ---------------------------------
+    // --- 1. Session not suspended/halted ------------------------------
     let client = match env.client(order.connection_id()) {
         Some(c) => c,
         None => return Decision::Reject(ClientSuspended),
@@ -147,7 +147,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         return Decision::Reject(ClientSuspended);
     }
 
-    // --- 2. Instrument resolved -------------------------------------------
+    // --- 2. Instrument resolved ----------------------------------------
     let inst = match env.instrument(order.instrument.id) {
         Some(i) => i,
         None => return Decision::Reject(order.unresolved_instrument_code()),
@@ -163,7 +163,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         }
     }
 
-    // --- 3. Broker/customer/trader enabled ---------------------------------
+    // --- 3. Broker/customer/trader enabled ------------------------------
     if !client.enabled {
         return Decision::Reject(WrongUserId);
     }
@@ -176,7 +176,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         return Decision::Reject(WrongOrderBook);
     }
 
-    // --- 5. Instrument not halted; market open -----------------------------
+    // --- 5. Instrument not halted; market open --------------------------
     if inst.halted {
         return Decision::Reject(SecurityHaltedPrimary);
     }
@@ -196,7 +196,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         MarketPhase::Closed => return Decision::Reject(ExchangeClosed),
     }
 
-    // --- 6. Currency -------------------------------------------------------
+    // --- 6. Currency ----------------------------------------------------
     if !order
         .instrument
         .currency
@@ -205,7 +205,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         return Decision::Reject(WrongCurrency);
     }
 
-    // --- 7. OrdType/TIF shape ----------------------------------------------
+    // --- 7. OrdType/TIF shape -------------------------------------------
     if !matches!(order.ord_type, OrdType::Limit | OrdType::Pegged) {
         return Decision::Reject(WrongOrderType);
     }
@@ -213,14 +213,14 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         return Decision::Reject(WrongTimeInForce);
     }
 
-    // --- 8. Tick size ------------------------------------------------------
+    // --- 8. Tick size ---------------------------------------------------
     if let Some(price) = order.price {
         if !on_tick(price, &inst.tick_table) {
             return Decision::Reject(MismatchPriceTicksize);
         }
     }
 
-    // --- 9. Lot rules / iceberg floor --------------------------------------
+    // --- 9. Lot rules / iceberg floor -----------------------------------
     let lot = inst.instrument.lot_size;
     let (lots, odd) = order.qty.split_board_odd(lot);
     let mixed = lots.raw > 0 && odd.raw > 0;
@@ -245,7 +245,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         }
     }
 
-    // --- 10. Qty/price bounds ------------------------------------------------
+    // --- 10. Qty/price bounds ---------------------------------------------
     if order.qty.raw == 0 || order.qty.raw > inst.max_size.raw {
         return Decision::Reject(WrongQuantity);
     }
@@ -255,7 +255,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         }
     }
 
-    // --- 11. Hidden requires LIS -------------------------------------------
+    // --- 11. Hidden requires LIS ----------------------------------------
     if order.visibility == Visibility::Hidden {
         if inst.lis_required {
             let need = match inst.lis_volume {
@@ -275,7 +275,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         }
     }
 
-    // --- 12. Shortable matrix -----------------------------------------------
+    // --- 12. Shortable matrix --------------------------------------------
     if order.side.is_short() {
         match inst.shortable {
             Shortable::No => return Decision::Reject(StockNotShortable),
@@ -288,7 +288,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         }
     }
 
-    // --- 13. STP shape; FOK disables STP ------------------------------------
+    // --- 13. STP shape; FOK disables STP ---------------------------------
     if let Some((_, key)) = order.stp_key {
         if key == 0 {
             return Decision::Reject(Malformed);
@@ -300,7 +300,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         }
     }
 
-    // --- 14. Peg shape -------------------------------------------------------
+    // --- 14. Peg shape ----------------------------------------------------
     if order.ord_type == OrdType::Pegged {
         if !inst.pegs_allowed {
             return Decision::Reject(WrongOrderType);
@@ -338,14 +338,14 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         return Decision::Reject(WrongOrderType);
     }
 
-    // --- 15. Post-only conflicts ----------------------------------------------
+    // --- 15. Post-only conflicts -------------------------------------------
     if order.post_only
         && (order.tif == Tif::Fok || order.tif == Tif::Ioc || order.max_floor.is_some())
     {
         return Decision::Reject(WrongPostOnly);
     }
 
-    // --- 16/17. Cross / bypass -----------------------------------------------
+    // --- 16/17. Cross / bypass --------------------------------------------
     if order.side.is_cross() {
         if let Some(cross) = &order.cross {
             if !matches!(cross.cross_type, 'B' | 'C' | 'I') {
@@ -362,7 +362,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         return Decision::Reject(WrongBypassMarker);
     }
 
-    // --- 18. Entitlement ------------------------------------------------------
+    // --- 18. Entitlement ---------------------------------------------------
     if !inst.allowed_capacities.contains(&order.capacity) {
         return Decision::Reject(WrongOrderCapacity);
     }
@@ -376,12 +376,12 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         }
     }
 
-    // --- 19. Price protection allowed --------------------------------------
+    // --- 19. Price protection allowed -----------------------------------
     if order.price_protection.is_some() && !inst.ebbo_allowed {
         return Decision::Reject(WrongPriceProtection);
     }
 
-    // --- 20. Notional credit limit -----------------------------------------
+    // --- 20. Notional credit limit --------------------------------------
     if let Some(limit) = client.notional_limit {
         let notional = match order.price {
             Some(px) => match px.checked_notional(order.qty) {
@@ -399,7 +399,7 @@ pub fn authorize(order: &ExchangeOrder, env: &EnvState) -> Decision {
         }
     }
 
-    // --- 21. Rate guard ------------------------------------------------------
+    // --- 21. Rate guard ---------------------------------------------------
     if client.rate_permits == 0 {
         return Decision::Reject(RateLimited);
     }

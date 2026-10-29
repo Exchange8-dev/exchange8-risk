@@ -46,9 +46,9 @@ use exchange8::fixed::{Price, Qty};
 use crate::core::{EnvState, InstrumentState, Shortable};
 use crate::events::{EgressItem, EventIdentity};
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Boot planes + env resolution
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// Resolve the tenant env id the planes attribute to - the same chain
 /// MemBus uses (`{SERVICE_SLUG}_ENV_ID` → `SENTIN8_ENV_ID` → system env)
@@ -84,9 +84,9 @@ pub fn spawn_planes(state: std::sync::Arc<crate::RiskState>, env_id: Uuid) {
     });
 }
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Snapshot + ledger projection (SOD)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// The reference-data row shape the SOD projection reads (the declared
 /// cross-schema read: `refdata.security` SELECT - the registration's
@@ -360,9 +360,9 @@ pub struct ClientSeed {
     pub rate: Option<(u32, u32)>,
 }
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Limits loader (limit rows + SOD seed → ledger)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// The durable `risk.risk_limit` row shape the loader reads.
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -440,9 +440,9 @@ fn parse_rate_pair(s: &str) -> Option<(f64, f64)> {
     Some((cap, rate))
 }
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Breach tracker (exchange8:risk:limit:breached - the state-change rule)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// Tracks breach *episodes* per (connection, bucket): a breach emits at the
 /// transition into the state, the recovery at the transition out - never
@@ -517,9 +517,9 @@ impl BreachTracker {
     }
 }
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Exposure publication (MemBus `risk.exposure` - DESIGN.md §4/§7)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// The exposure snapshot envelope: per-connection reserved + spent notional
 /// (per currency), the ledger's day-so-far state. Each snapshot fully
@@ -570,9 +570,9 @@ pub async fn publish_exposure(state: &crate::RiskState) {
 /// `risk` slug).
 pub const EXPOSURE_FAMILY: &str = "risk.exposure";
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Inbound consumer (ME lifecycle → ledger release/consume; the SOD fill)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// The consumed stream family (the Bus stream key is `bus:{env}:exchange8`
 /// - the bare vertical slug every vertical producer publishes into).
@@ -617,7 +617,7 @@ pub fn spawn_consumer(state: Arc<crate::RiskState>, env_id: Uuid) {
                 }
             }
         };
-        // BUSCONNP-1: the SSE direct-consumer pattern - one long-lived
+        // the SSE direct-consumer pattern - one long-lived
         // `GET /v1/consume/sse` connection per epoch, per-message acks.
         // The bus holds the blocking read server-side; this loop never
         // issues short-interval `POST /v1/consume` blocking polls.
@@ -784,9 +784,9 @@ fn apply_killed(
     }]
 }
 
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 // Egress staging (the single writer's channel)
-// ---------------------------------------------------------------------------
+// ------------------------------------------------------------------------
 
 /// The egress channel (set once at boot - the writers and the handlers share
 /// it). Bounded: the decision plane stages without awaiting.
